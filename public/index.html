@@ -1223,13 +1223,15 @@ async function saveToLater(videoId, btn) {
     showToast('Already saved to Later');
     return;
   }
+
   const originalText = btn?.textContent;
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Saving…';
   }
+
   try {
-    await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', {
+    const res = await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${ACCESS_TOKEN}`,
@@ -1244,13 +1246,19 @@ async function saveToLater(videoId, btn) {
           }
         }
       })
-    }).then(async (res) => {
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || `HTTP ${res.status}`);
-      }
-      return res.json();
     });
+
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const apiMessage = body?.error?.message || `HTTP ${res.status}`;
+      const apiReason = body?.error?.errors?.[0]?.reason || '';
+      throw new Error(apiReason ? `${apiMessage} [${apiReason}]` : apiMessage);
+    }
+
+    if (!body?.id || body?.kind !== 'youtube#playlistItem') {
+      throw new Error('YouTube did not confirm the playlist save');
+    }
+
     savedLaterVideoIds.add(videoId);
     if (btn) {
       btn.textContent = '✓ Saved';
@@ -1264,6 +1272,8 @@ async function saveToLater(videoId, btn) {
     }
   } catch (e) {
     const msg = e.message || 'Unknown error';
+    console.error('Save to Later failed', { videoId, playlistId: LATER_PLAYLIST_ID, message: msg });
+
     if (/duplicate|already exists|videoAlreadyInPlaylist/i.test(msg)) {
       savedLaterVideoIds.add(videoId);
       if (btn) {
@@ -1274,11 +1284,18 @@ async function saveToLater(videoId, btn) {
       showToast('Already in Later');
       return;
     }
+
+    if (/insufficient permissions|forbidden|playlistOperationUnsupported|playlistItemsNotAccessible|scope/i.test(msg)) {
+      showToast(`Could not save: ${msg}. Try Sign Out → Sign In again.`);
+    } else {
+      showToast(`Could not save: ${msg}`);
+    }
+
     if (btn) {
       btn.disabled = false;
       btn.textContent = originalText || '＋ Later';
+      btn.classList.remove('saved');
     }
-    showToast(`Could not save: ${msg}`);
   }
 }
 
