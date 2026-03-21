@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CleanTube">
@@ -34,6 +34,7 @@
     color: var(--text);
     min-height: 100dvh;
     overflow-x: hidden;
+    touch-action: manipulation;
   }
   #setup-screen {
     min-height: 100dvh;
@@ -212,19 +213,6 @@
   }
   .nav-tab.active { background: var(--accent); color: #0a0a0f; }
   .nav-right { display: flex; align-items: center; gap: 8px; }
-  .user-chip {
-    display: none;
-    max-width: 170px;
-    padding: 7px 10px;
-    border-radius: 999px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    font-size: 12px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
   .settings-btn {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -551,7 +539,6 @@
       <button class="nav-tab" onclick="switchTab('search')" id="tab-search">Search</button>
     </div>
     <div class="nav-right">
-      <div class="user-chip" id="user-chip"></div>
       <div class="settings-btn" onclick="openSettings()">⚙</div>
     </div>
   </nav>
@@ -722,13 +709,7 @@ async function loadUserProfile() {
 }
 
 function refreshProfileChip() {
-  const chip = document.getElementById('user-chip');
-  if (USER_NAME) {
-    chip.textContent = USER_NAME;
-    chip.style.display = 'block';
-  } else {
-    chip.style.display = 'none';
-  }
+  // Intentionally hidden in the UI to keep nav compact.
 }
 
 function showApp() {
@@ -829,11 +810,18 @@ async function loadWatchLater(append = false) {
         description: i.snippet.description
       }));
     const filtered = await filterShorts(videos);
+    if (!filtered.longform.length && !videos.length && !append) {
+      document.getElementById('main-content').innerHTML = `<div class="empty"><div class="icon">🕒</div><p>Watch Later returned no items. Tried playlist <code>${escHtml(playlistId)}</code>.<br><br>If you expected videos here, YouTube may be blocking access to the special Watch Later playlist for this OAuth flow.</p></div>`;
+      return;
+    }
     renderVideos(filtered.longform, 'watchlater', append);
     filteredShorts += filtered.removedCount;
     updateFilteredCount();
   } catch (e) {
-    showError(new Error(`Watch Later failed: ${e.message || 'Unknown error'}`));
+    const err = new Error(`Watch Later failed: ${e.message || 'Unknown error'}`);
+    showToast(err.message);
+    showError(err);
+    console.error('Watch Later error', e);
   }
 }
 
