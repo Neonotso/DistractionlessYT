@@ -586,7 +586,7 @@ let ACCESS_TOKEN = '';
 let TOKEN_EXPIRY = 0;
 let USER_NAME = '';
 let LATER_PLAYLIST_ID = '';
-let currentTab = 'feed';
+let currentTab = 'search';
 let nextPageTokens = {};
 let filteredShorts = 0;
 let tokenClient = null;
@@ -606,7 +606,7 @@ let tokenClient = null;
   if (hasValidToken()) {
     showApp();
     refreshProfileChip();
-    loadTab('feed');
+    switchTab('search');
   }
 })();
 
