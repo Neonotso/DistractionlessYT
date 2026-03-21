@@ -613,6 +613,7 @@ const CHANNEL_UPLOADS_CACHE_PREFIX = 'ct_channel_uploads_v1:';
 const CHANNEL_UPLOADS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const SEARCH_CACHE_PREFIX = 'ct_search_cache_v1:';
 const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
+const LAST_SEARCH_KEY = 'ct_last_search_v1';
 let API_KEY = '';
 let CLIENT_ID = '';
 let ACCESS_TOKEN = '';
@@ -984,19 +985,37 @@ async function loadWatchLater(append = false) {
 }
 
 function renderSearchUI() {
+  const lastQuery = sessionStorage.getItem(LAST_SEARCH_KEY) || '';
   document.getElementById('main-content').innerHTML = `
     <div class="search-wrap">
-      <input type="text" id="search-input" placeholder="Search YouTube…" style="flex:1" onkeydown="if(event.key==='Enter')doSearch()" autocorrect="off" autocapitalize="none" spellcheck="false">
+      <input type="text" id="search-input" placeholder="Search YouTube…" value="${escHtml(lastQuery)}" style="flex:1" onkeydown="if(event.key==='Enter')doSearch()" autocorrect="off" autocapitalize="none" spellcheck="false">
       <button class="btn-primary" style="width:auto;padding:0 20px;flex-shrink:0;margin-top:0" onclick="doSearch()">Go</button>
     </div>
-    <div class="empty" style="padding:26px 12px"><div class="icon">🔎</div><p>Search opens first to keep quota usage low. Feed and Later are still available when you want them.</p></div>
+    <div id="search-empty-state" class="empty" style="padding:26px 12px"><div class="icon">🔎</div><p>Search opens first to keep quota usage low. Feed and Later are still available when you want them.</p></div>
     <div id="search-results"></div>`;
+
+  if (lastQuery) {
+    const cached = getCachedSearch(lastQuery);
+    if (cached) {
+      filteredShorts = cached.filteredShorts || 0;
+      updateFilteredCount();
+      document.getElementById('search-empty-state')?.remove();
+      const resultsEl = document.getElementById('search-results');
+      if (!cached.videos?.length) {
+        resultsEl.innerHTML = '<div class="empty"><div class="icon">🔍</div>No long-form results found.</div>';
+      } else {
+        renderVideosInto(cached.videos, resultsEl, 'search');
+      }
+    }
+  }
 }
 
 async function doSearch() {
   const q = document.getElementById('search-input').value.trim();
   if (!q) return;
+  sessionStorage.setItem(LAST_SEARCH_KEY, q);
   const resultsEl = document.getElementById('search-results');
+  document.getElementById('search-empty-state')?.remove();
 
   const cached = getCachedSearch(q);
   if (cached) {
@@ -1285,11 +1304,12 @@ async function saveToLater(videoId, btn) {
       return;
     }
 
-    if (/insufficient permissions|forbidden|playlistOperationUnsupported|playlistItemsNotAccessible|scope/i.test(msg)) {
-      showToast(`Could not save: ${msg}. Try Sign Out → Sign In again.`);
-    } else {
-      showToast(`Could not save: ${msg}`);
-    }
+    const visibleMsg = /insufficient permissions|forbidden|playlistOperationUnsupported|playlistItemsNotAccessible|scope/i.test(msg)
+      ? `Could not save: ${msg}. Try Sign Out → Sign In again.`
+      : `Could not save: ${msg}`;
+
+    showToast(visibleMsg);
+    showPersistentError(visibleMsg);
 
     if (btn) {
       btn.disabled = false;
@@ -1430,6 +1450,17 @@ function updateFilteredCount() {
 function showError(e, el) {
   const target = el || document.getElementById('main-content');
   target.innerHTML = `<div class="empty"><div class="icon">⚠️</div><p><strong>API Error</strong><br>${escHtml(e.message || 'Unknown error')}</p></div>`;
+}
+function showPersistentError(msg) {
+  const main = document.getElementById('main-content');
+  if (!main) return;
+  const existing = document.getElementById('persistent-error');
+  if (existing) existing.remove();
+  const box = document.createElement('div');
+  box.id = 'persistent-error';
+  box.style.cssText = 'margin-bottom:16px;padding:12px 14px;border:1px solid var(--red);background:rgba(255,68,68,.08);color:var(--text);border-radius:12px;font-size:13px;line-height:1.5;';
+  box.innerHTML = `<strong>Save failed</strong><br>${escHtml(msg)}`;
+  main.prepend(box);
 }
 function showToast(msg) {
   const t = document.getElementById('toast');
