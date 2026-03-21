@@ -506,7 +506,7 @@
 
   <div class="setup-card">
     <h2>Sign in with Google</h2>
-    <p>Enter your Google OAuth Client ID, then connect your YouTube account with read-only access. This enables subscriptions and a real Watch Later view.</p>
+    <p>Enter your Google OAuth Client ID, then connect your YouTube account with read-only access. This enables subscriptions and the Later queue view.</p>
     <div class="field-label">Google OAuth Client ID</div>
     <input type="text" id="client-id-input" placeholder="1234567890-abc123.apps.googleusercontent.com" autocomplete="off" autocapitalize="none" spellcheck="false">
     <button class="btn-primary" onclick="saveClientIdAndLaunch()">Save Client ID</button>
@@ -525,7 +525,7 @@
   <div class="steps">
     <div class="step"><div class="step-num">1</div><p>Use the Firebase URL you already configured as an <strong>Authorized JavaScript origin</strong>.</p></div>
     <div class="step"><div class="step-num">2</div><p>Use scope <code>https://www.googleapis.com/auth/youtube.readonly</code>.</p></div>
-    <div class="step"><div class="step-num">3</div><p>After signing in, CleanTube will load your subscriptions and try the special <strong>WL</strong> playlist for Watch Later.</p></div>
+    <div class="step"><div class="step-num">3</div><p>After signing in, CleanTube will load your subscriptions and try YouTube's special Watch Later list first. If that fails, you can use your own playlist as the <strong>Later</strong> queue.</p></div>
     <div class="step"><div class="step-num">4</div><p>On iPhone, tap <strong>Share → Add to Home Screen</strong> for the best app-like experience.</p></div>
   </div>
 </div>
@@ -535,7 +535,7 @@
     <div class="nav-logo">CleanTube</div>
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="switchTab('feed')" id="tab-feed">Feed</button>
-      <button class="nav-tab" onclick="switchTab('watchlater')" id="tab-watchlater">Watch Later</button>
+      <button class="nav-tab" onclick="switchTab('watchlater')" id="tab-watchlater">Later</button>
       <button class="nav-tab" onclick="switchTab('search')" id="tab-search">Search</button>
     </div>
     <div class="nav-right">
@@ -566,6 +566,8 @@
     <input type="text" id="settings-client-id" autocomplete="off" autocapitalize="none" spellcheck="false">
     <div class="field-label">Optional API Key</div>
     <input type="password" id="settings-api-key" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    <div class="field-label">Later Playlist ID <span style="text-transform:none;letter-spacing:normal">(fallback if Watch Later is unavailable)</span></div>
+    <input type="text" id="settings-playlist-id" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="PL...">
     <button class="btn-primary" onclick="saveSettings()">Save Changes</button>
     <button class="btn-secondary" onclick="signInYouTube()">Refresh Google Login</button>
     <button class="btn-secondary" onclick="signOutYouTube()">Sign Out</button>
@@ -583,6 +585,7 @@ let CLIENT_ID = '';
 let ACCESS_TOKEN = '';
 let TOKEN_EXPIRY = 0;
 let USER_NAME = '';
+let LATER_PLAYLIST_ID = '';
 let currentTab = 'feed';
 let nextPageTokens = {};
 let filteredShorts = 0;
@@ -594,6 +597,7 @@ let tokenClient = null;
   ACCESS_TOKEN = sessionStorage.getItem('ct_access_token') || '';
   TOKEN_EXPIRY = Number(sessionStorage.getItem('ct_token_expiry') || 0);
   USER_NAME = sessionStorage.getItem('ct_user_name') || '';
+  LATER_PLAYLIST_ID = localStorage.getItem('ct_later_playlist_id') || '';
 
   document.getElementById('client-id-input').value = CLIENT_ID;
   document.getElementById('api-key-input').value = API_KEY;
@@ -780,10 +784,16 @@ async function getChannelRecentVideos(channelId) {
 
 async function loadWatchLater(append = false) {
   if (!hasValidToken()) {
-    return showSigninRequired('Sign in to access your Watch Later list.');
+    return showSigninRequired('Sign in to access your Later list.');
   }
+  const pageToken = nextPageTokens.watchlater || '';
+
+  async function fetchPlaylistItems(playlistId) {
+    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${encodeURIComponent(playlistId)}&maxResults=25${pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : ''}`;
+    return apiFetch(url, { auth: true });
+  }
+
   try {
-    const pageToken = nextPageTokens.watchlater || '';
     let playlistId = 'WL';
 
     try {
@@ -794,10 +804,18 @@ async function loadWatchLater(append = false) {
       // ignore and fall back to WL
     }
 
-    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${encodeURIComponent(playlistId)}&maxResults=25${pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : ''}`;
-    const data = await apiFetch(url, { auth: true });
+    let data = await fetchPlaylistItems(playlistId);
+    let sourceLabel = `Watch Later (${playlistId})`;
+
+    if ((!data.items || data.items.length === 0) && LATER_PLAYLIST_ID) {
+      data = await fetchPlaylistItems(LATER_PLAYLIST_ID);
+      playlistId = LATER_PLAYLIST_ID;
+      sourceLabel = `Later playlist (${playlistId})`;
+      showToast('Using your fallback Later playlist');
+    }
+
     nextPageTokens.watchlater = data.nextPageToken || null;
-    const videos = data.items
+    const videos = (data.items || [])
       .filter(i => i.snippet?.resourceId?.kind === 'youtube#video' && i.snippet.resourceId.videoId)
       .map(i => ({
         videoId: i.snippet.resourceId.videoId,
@@ -809,19 +827,20 @@ async function loadWatchLater(append = false) {
         publishedAt: i.contentDetails?.videoPublishedAt || i.snippet.publishedAt,
         description: i.snippet.description
       }));
+
     const filtered = await filterShorts(videos);
     if (!filtered.longform.length && !videos.length && !append) {
-      document.getElementById('main-content').innerHTML = `<div class="empty"><div class="icon">🕒</div><p>Watch Later returned no items. Tried playlist <code>${escHtml(playlistId)}</code>.<br><br>If you expected videos here, YouTube may be blocking access to the special Watch Later playlist for this OAuth flow.</p></div>`;
+      document.getElementById('main-content').innerHTML = `<div class="empty"><div class="icon">🕒</div><p>No items were returned from <strong>${escHtml(sourceLabel)}</strong>.<br><br>${LATER_PLAYLIST_ID ? 'If that is unexpected, double-check the playlist ID and make sure the playlist is accessible to the signed-in account.' : 'You can add a fallback playlist ID in Settings and use that as your Later queue.'}</p></div>`;
       return;
     }
     renderVideos(filtered.longform, 'watchlater', append);
     filteredShorts += filtered.removedCount;
     updateFilteredCount();
   } catch (e) {
-    const err = new Error(`Watch Later failed: ${e.message || 'Unknown error'}`);
+    const err = new Error(`Later list failed: ${e.message || 'Unknown error'}`);
     showToast(err.message);
     showError(err);
-    console.error('Watch Later error', e);
+    console.error('Later list error', e);
   }
 }
 
@@ -931,7 +950,7 @@ function renderVideos(videos, tabKey, append = false) {
     main.innerHTML = '<div class="empty"><div class="icon">📭</div>No long-form videos found.</div>';
     return;
   }
-  const titles = { feed: 'Subscriptions', watchlater: 'Watch Later', search: 'Results' };
+  const titles = { feed: 'Subscriptions', watchlater: 'Later', search: 'Results' };
   if (!append) {
     const header = document.createElement('div');
     header.className = 'section-header';
@@ -999,6 +1018,7 @@ function closePlayer() {
 function openSettings() {
   document.getElementById('settings-client-id').value = CLIENT_ID;
   document.getElementById('settings-api-key').value = API_KEY;
+  document.getElementById('settings-playlist-id').value = LATER_PLAYLIST_ID;
   document.getElementById('settings-modal').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
@@ -1006,8 +1026,10 @@ function closeSettingsIfOutside(e) { if (e.target === document.getElementById('s
 function saveSettings() {
   CLIENT_ID = document.getElementById('settings-client-id').value.trim();
   API_KEY = document.getElementById('settings-api-key').value.trim();
+  LATER_PLAYLIST_ID = document.getElementById('settings-playlist-id').value.trim();
   localStorage.setItem('ct_client_id', CLIENT_ID);
   localStorage.setItem('ct_api_key', API_KEY);
+  localStorage.setItem('ct_later_playlist_id', LATER_PLAYLIST_ID);
   tokenClient = null;
   closeSettings();
   updateAuthStatus();
@@ -1064,6 +1086,20 @@ function relativeTime(date) {
   if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
+
+// Aggressive mobile zoom suppression for Safari/PWA.
+document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
+document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+document.addEventListener('gestureend', e => e.preventDefault(), { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+document.addEventListener('touchmove', (e) => {
+  if (e.scale && e.scale !== 1) e.preventDefault();
+}, { passive: false });
 </script>
 </body>
 </html>
