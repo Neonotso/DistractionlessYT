@@ -749,11 +749,13 @@ async function loadSubscriptionFeed(append = false) {
     }
 
     const pageToken = nextPageTokens.feed || '';
-    const url = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=${FEED_CHANNEL_BATCH_SIZE}${pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : ''}`;
-    const data = await apiFetch(url, { auth: true });
-    nextPageTokens.feed = data.nextPageToken || null;
-    const channelIds = data.items.map(i => i.snippet.resourceId.channelId).filter(Boolean);
-    const videoArrays = await Promise.all(channelIds.map(cid => getChannelRecentVideos(cid)));
+    const subsUrl = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=${FEED_CHANNEL_BATCH_SIZE}${pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : ''}`;
+    const subsData = await apiFetch(subsUrl, { auth: true });
+    nextPageTokens.feed = subsData.nextPageToken || null;
+
+    const channelIds = subsData.items.map(i => i.snippet.resourceId.channelId).filter(Boolean);
+    const uploadsMap = await getChannelUploadsPlaylists(channelIds);
+    const videoArrays = await Promise.all(channelIds.map(cid => getChannelRecentVideosFromUploads(cid, uploadsMap[cid])));
     const videos = videoArrays.flat().sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
     const filtered = await filterShorts(videos);
     renderVideos(filtered.longform, 'feed', append);
@@ -773,23 +775,45 @@ async function loadSubscriptionFeed(append = false) {
   }
 }
 
-async function getChannelRecentVideos(channelId) {
+async function getChannelUploadsPlaylists(channelIds) {
+  if (!channelIds.length) return {};
   try {
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${encodeURIComponent(channelId)}&maxResults=${FEED_VIDEOS_PER_CHANNEL}&order=date&type=video`;
+    const url = `https://www.googleapis.com/youtube/v3/channels?part=contentDetails,snippet&id=${channelIds.map(encodeURIComponent).join(',')}`;
     const data = await apiFetch(url, { auth: true, allowApiKeyFallback: true });
-    return data.items.map(i => {
-      const thumb = (i.snippet.thumbnails.high || i.snippet.thumbnails.medium || i.snippet.thumbnails.default || {});
-      return {
-        videoId: i.id.videoId,
-        title: i.snippet.title,
-        channel: i.snippet.channelTitle,
-        thumbnail: thumb.url || '',
-        thumbnailWidth: thumb.width || 0,
-        thumbnailHeight: thumb.height || 0,
-        publishedAt: i.snippet.publishedAt,
-        description: i.snippet.description
+    const map = {};
+    for (const item of (data.items || [])) {
+      map[item.id] = {
+        uploadsPlaylistId: item.contentDetails?.relatedPlaylists?.uploads || '',
+        channelTitle: item.snippet?.title || ''
       };
-    });
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+async function getChannelRecentVideosFromUploads(channelId, uploadInfo) {
+  const uploadsPlaylistId = uploadInfo?.uploadsPlaylistId || '';
+  if (!uploadsPlaylistId) return [];
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${encodeURIComponent(uploadsPlaylistId)}&maxResults=${FEED_VIDEOS_PER_CHANNEL}`;
+    const data = await apiFetch(url, { auth: true, allowApiKeyFallback: true });
+    return (data.items || [])
+      .filter(i => i.snippet?.resourceId?.kind === 'youtube#video' && i.snippet.resourceId.videoId)
+      .map(i => {
+        const thumb = (i.snippet.thumbnails.high || i.snippet.thumbnails.medium || i.snippet.thumbnails.default || {});
+        return {
+          videoId: i.snippet.resourceId.videoId,
+          title: i.snippet.title,
+          channel: i.snippet.videoOwnerChannelTitle || uploadInfo?.channelTitle || i.snippet.channelTitle,
+          thumbnail: thumb.url || '',
+          thumbnailWidth: thumb.width || 0,
+          thumbnailHeight: thumb.height || 0,
+          publishedAt: i.contentDetails?.videoPublishedAt || i.snippet.publishedAt,
+          description: i.snippet.description
+        };
+      });
   } catch {
     return [];
   }
