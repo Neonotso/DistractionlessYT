@@ -327,6 +327,22 @@
     color: var(--text-muted);
   }
   .video-meta { flex: 1; min-width: 0; }
+  .video-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .mini-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .mini-btn:hover { color: var(--text); border-color: var(--accent); }
   .video-title {
     font-size: 14px;
     font-weight: 500;
@@ -521,7 +537,7 @@
 
   <div class="steps">
     <div class="step"><div class="step-num">1</div><p>Use the Firebase URL you already configured as an <strong>Authorized JavaScript origin</strong>.</p></div>
-    <div class="step"><div class="step-num">2</div><p>Use scope <code>https://www.googleapis.com/auth/youtube.readonly</code>.</p></div>
+    <div class="step"><div class="step-num">2</div><p>Use scope <code>https://www.googleapis.com/auth/youtube</code> so the app can read your account and save videos to your Later playlist.</p></div>
     <div class="step"><div class="step-num">3</div><p>After signing in, CleanTube will load your subscriptions and try YouTube's special Watch Later list first. If that fails, you can use your own playlist as the <strong>Later</strong> queue.</p></div>
     <div class="step"><div class="step-num">4</div><p>On iPhone, tap <strong>Share → Add to Home Screen</strong> for the best app-like experience.</p></div>
   </div>
@@ -577,7 +593,7 @@
 <div id="toast"></div>
 
 <script>
-const YT_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly';
+const YT_SCOPE = 'https://www.googleapis.com/auth/youtube';
 const DEFAULT_CLIENT_ID = '721056966317-6mp3i2ijg4bg7la0m4p07k0j21i1828n.apps.googleusercontent.com';
 const SHORTS_MAX_DURATION_SECS = 65;
 const FEED_CHANNEL_BATCH_SIZE = 3;
@@ -1053,6 +1069,9 @@ function renderVideosInto(videos, container, tabKey) {
         <div class="video-meta">
           <div class="video-title">${escHtml(v.title)}</div>
           <div class="video-sub"><span>${escHtml(v.channel || '')}</span>${timeAgo ? `<span>${timeAgo}</span>` : ''}</div>
+          <div class="video-actions">
+            <button class="mini-btn" onclick="event.stopPropagation(); saveToLater('${v.videoId}')">＋ Later</button>
+          </div>
         </div>
       </div>`;
     card.addEventListener('click', () => playVideo(v));
@@ -1119,6 +1138,48 @@ function refreshFeed(force = false) {
   updateFilteredCount();
   nextPageTokens.feed = '';
   loadSubscriptionFeed(false);
+}
+
+async function saveToLater(videoId) {
+  if (!hasValidToken()) {
+    showToast('Sign in first');
+    return;
+  }
+  if (!LATER_PLAYLIST_ID) {
+    showToast('Pick a Later playlist in Settings first');
+    return;
+  }
+  try {
+    await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        snippet: {
+          playlistId: LATER_PLAYLIST_ID,
+          resourceId: {
+            kind: 'youtube#video',
+            videoId
+          }
+        }
+      })
+    }).then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message || `HTTP ${res.status}`);
+      }
+      return res.json();
+    });
+    showToast('Saved to Later');
+    if (currentTab === 'watchlater') {
+      nextPageTokens.watchlater = '';
+      loadWatchLater(false);
+    }
+  } catch (e) {
+    showToast(`Could not save: ${e.message || 'Unknown error'}`);
+  }
 }
 
 async function loadPlaylistOptions() {
