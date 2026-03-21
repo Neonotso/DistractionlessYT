@@ -10,7 +10,7 @@
 <title>CleanTube — No Shorts</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -22,13 +22,12 @@
     --text: #f0eff5;
     --text-muted: #7a7a95;
     --red: #ff4444;
+    --green: #57d38c;
     --radius: 12px;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
   body {
     font-family: 'DM Sans', sans-serif;
     background: var(--bg);
@@ -36,7 +35,6 @@
     min-height: 100dvh;
     overflow-x: hidden;
   }
-
   #setup-screen {
     min-height: 100dvh;
     display: flex;
@@ -46,7 +44,6 @@
     padding: 32px 24px calc(32px + var(--safe-bottom));
     background: radial-gradient(ellipse at 30% 20%, #1a1a2e 0%, var(--bg) 60%);
   }
-
   .logo {
     font-family: 'DM Serif Display', serif;
     font-size: 42px;
@@ -56,41 +53,34 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
-
   .tagline {
     font-size: 13px;
     color: var(--text-muted);
     letter-spacing: 2px;
     text-transform: uppercase;
-    margin-bottom: 48px;
+    margin-bottom: 30px;
   }
-
-  .setup-card {
+  .setup-card, .info-card {
     width: 100%;
-    max-width: 420px;
+    max-width: 460px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 20px;
-    padding: 28px 24px;
-    margin-bottom: 20px;
+    padding: 24px;
+    margin-bottom: 18px;
   }
-
-  .setup-card h2 {
+  .setup-card h2, .info-card h2, .modal-sheet h2 {
     font-family: 'DM Serif Display', serif;
     font-size: 20px;
     font-weight: 400;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
-
-  .setup-card p {
+  .setup-card p, .info-card p, .step p {
     font-size: 13px;
     color: var(--text-muted);
     line-height: 1.6;
-    margin-bottom: 20px;
   }
-
-  .setup-card a { color: var(--accent2); text-decoration: none; }
-
+  .setup-card a, .info-card a { color: var(--accent2); text-decoration: none; }
   .field-label {
     font-size: 11px;
     letter-spacing: 1.5px;
@@ -98,7 +88,6 @@
     color: var(--text-muted);
     margin-bottom: 8px;
   }
-
   input[type="text"], input[type="password"] {
     width: 100%;
     background: var(--surface2);
@@ -113,30 +102,50 @@
     margin-bottom: 16px;
     -webkit-appearance: none;
   }
-
   input:focus { border-color: var(--accent); }
-
-  .btn-primary {
+  .btn-primary, .btn-secondary, .btn-danger {
     width: 100%;
-    background: var(--accent);
-    color: #0a0a0f;
     font-family: 'DM Sans', sans-serif;
     font-size: 15px;
-    font-weight: 500;
-    padding: 16px;
-    border: none;
+    padding: 15px 16px;
     border-radius: var(--radius);
     cursor: pointer;
-    transition: opacity .15s, transform .1s;
+    margin-top: 10px;
   }
-
-  .btn-primary:active { opacity: .85; transform: scale(.98); }
-
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0a0f;
+    border: none;
+    font-weight: 500;
+  }
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .btn-danger {
+    background: transparent;
+    border: 1px solid var(--red);
+    color: var(--red);
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    border-radius: 999px;
+    margin: 10px 0 4px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+  .dot.ok { background: var(--green); }
   .steps {
     width: 100%;
-    max-width: 420px;
+    max-width: 460px;
   }
-
   .step {
     display: flex;
     gap: 14px;
@@ -144,9 +153,7 @@
     padding: 12px 0;
     border-bottom: 1px solid var(--border);
   }
-
   .step:last-child { border-bottom: none; }
-
   .step-num {
     width: 26px;
     height: 26px;
@@ -161,42 +168,36 @@
     flex-shrink: 0;
     margin-top: 2px;
   }
-
-  .step p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-  .step p strong { color: var(--text); }
-
   #app { display: none; min-height: 100dvh; flex-direction: column; }
-
   nav {
     position: sticky;
     top: 0;
     z-index: 100;
     background: rgba(10,10,15,.92);
     backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border);
-    padding: calc(var(--safe-top) + 12px) 20px 12px;
+    padding: calc(var(--safe-top) + 12px) 16px 12px;
     display: flex;
     align-items: center;
+    gap: 10px;
     justify-content: space-between;
   }
-
   .nav-logo {
     font-family: 'DM Serif Display', serif;
     font-size: 22px;
     background: linear-gradient(135deg, var(--accent) 0%, #f5a623 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    flex-shrink: 0;
   }
-
   .nav-tabs {
     display: flex;
     gap: 4px;
     background: var(--surface2);
     border-radius: 10px;
     padding: 3px;
+    overflow-x: auto;
   }
-
   .nav-tab {
     font-family: 'DM Sans', sans-serif;
     font-size: 12px;
@@ -207,21 +208,23 @@
     background: transparent;
     color: var(--text-muted);
     cursor: pointer;
-    transition: all .2s;
     white-space: nowrap;
   }
-
-  .nav-tab.active {
-    background: var(--accent);
-    color: #0a0a0f;
+  .nav-tab.active { background: var(--accent); color: #0a0a0f; }
+  .nav-right { display: flex; align-items: center; gap: 8px; }
+  .user-chip {
+    display: none;
+    max-width: 170px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-
-  .nav-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
   .settings-btn {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -235,34 +238,34 @@
     cursor: pointer;
     font-size: 16px;
   }
-
   main {
     flex: 1;
     padding: 20px 16px calc(20px + var(--safe-bottom));
-    max-width: 600px;
+    max-width: 680px;
     margin: 0 auto;
     width: 100%;
   }
-
   .section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 16px;
+    gap: 10px;
   }
-
   .section-title {
     font-family: 'DM Serif Display', serif;
     font-size: 22px;
     font-weight: 400;
   }
-
-  .video-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+  .badge {
+    font-size: 11px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 20px;
   }
-
+  .video-grid { display: flex; flex-direction: column; gap: 16px; }
   .video-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -272,32 +275,24 @@
     transition: transform .15s, border-color .15s;
     animation: fadeSlideIn .3s ease both;
   }
-
   @keyframes fadeSlideIn {
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
   }
-
   .video-card:active { transform: scale(.98); }
   .video-card:hover { border-color: #3a3a50; }
-
   .thumb-wrap {
     position: relative;
     aspect-ratio: 16/9;
     overflow: hidden;
     background: var(--surface2);
   }
-
   .thumb-wrap img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-    transition: transform .3s;
   }
-
-  .video-card:hover .thumb-wrap img { transform: scale(1.02); }
-
   .duration-badge {
     position: absolute;
     bottom: 8px;
@@ -308,9 +303,7 @@
     font-weight: 500;
     padding: 3px 7px;
     border-radius: 6px;
-    letter-spacing: .3px;
   }
-
   .play-overlay {
     position: absolute;
     inset: 0;
@@ -321,9 +314,7 @@
     background: rgba(0,0,0,.4);
     transition: opacity .2s;
   }
-
   .video-card:hover .play-overlay { opacity: 1; }
-
   .play-icon {
     width: 52px;
     height: 52px;
@@ -334,30 +325,20 @@
     justify-content: center;
     font-size: 20px;
   }
-
-  .video-info {
-    padding: 14px 16px;
-    display: flex;
-    gap: 12px;
-  }
-
+  .video-info { padding: 14px 16px; display: flex; gap: 12px; }
   .channel-avatar {
     width: 36px;
     height: 36px;
     border-radius: 50%;
     background: var(--surface2);
     flex-shrink: 0;
-    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 14px;
-    font-weight: 500;
     color: var(--text-muted);
   }
-
   .video-meta { flex: 1; min-width: 0; }
-
   .video-title {
     font-size: 14px;
     font-weight: 500;
@@ -368,7 +349,6 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-
   .video-sub {
     font-size: 12px;
     color: var(--text-muted);
@@ -377,10 +357,8 @@
     align-items: center;
     flex-wrap: wrap;
   }
-
   .video-sub span::after { content: '·'; margin-left: 6px; }
   .video-sub span:last-child::after { content: ''; }
-
   #player-panel {
     display: none;
     position: fixed;
@@ -389,9 +367,7 @@
     background: var(--bg);
     flex-direction: column;
   }
-
   #player-panel.open { display: flex; }
-
   .player-header {
     padding: calc(var(--safe-top) + 12px) 16px 12px;
     display: flex;
@@ -400,7 +376,6 @@
     background: var(--surface);
     border-bottom: 1px solid var(--border);
   }
-
   .back-btn {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -415,7 +390,6 @@
     font-size: 18px;
     flex-shrink: 0;
   }
-
   .player-title {
     font-size: 14px;
     font-weight: 500;
@@ -425,29 +399,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-
-  #yt-frame-wrap {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16/9;
-    background: #000;
-    flex-shrink: 0;
-  }
-
-  #yt-frame-wrap iframe {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
-  }
-
-  .player-info {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-  }
-
+  #yt-frame-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; }
+  #yt-frame-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+  .player-info { flex: 1; overflow-y: auto; padding: 16px; }
   #playing-title {
     font-family: 'DM Serif Display', serif;
     font-size: 20px;
@@ -455,13 +409,7 @@
     line-height: 1.3;
     margin-bottom: 8px;
   }
-
-  #playing-channel {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 16px;
-  }
-
+  #playing-channel { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
   .bg-audio-notice {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -471,9 +419,6 @@
     color: var(--text-muted);
     line-height: 1.6;
   }
-
-  .bg-audio-notice strong { color: var(--text); }
-
   .loader {
     display: flex;
     flex-direction: column;
@@ -483,7 +428,6 @@
     color: var(--text-muted);
     font-size: 14px;
   }
-
   .spinner {
     width: 36px;
     height: 36px;
@@ -492,9 +436,7 @@
     border-radius: 50%;
     animation: spin .8s linear infinite;
   }
-
   @keyframes spin { to { transform: rotate(360deg); } }
-
   .empty {
     text-align: center;
     padding: 60px 20px;
@@ -502,9 +444,7 @@
     font-size: 14px;
     line-height: 1.6;
   }
-
   .empty .icon { font-size: 40px; margin-bottom: 12px; }
-
   #toast {
     position: fixed;
     bottom: calc(24px + var(--safe-bottom));
@@ -522,9 +462,7 @@
     white-space: nowrap;
     pointer-events: none;
   }
-
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
   #settings-modal {
     display: none;
     position: fixed;
@@ -536,9 +474,7 @@
     justify-content: center;
     padding-bottom: var(--safe-bottom);
   }
-
   #settings-modal.open { display: flex; }
-
   .modal-sheet {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -548,47 +484,7 @@
     max-width: 480px;
     animation: slideUp .25s ease;
   }
-
-  @keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-  }
-
-  .modal-sheet h2 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 22px;
-    font-weight: 400;
-    margin-bottom: 20px;
-  }
-
-  .modal-sheet .btn-primary { margin-top: 8px; }
-
-  .btn-secondary {
-    width: 100%;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    padding: 14px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    margin-top: 10px;
-  }
-
-  .btn-danger {
-    width: 100%;
-    background: transparent;
-    border: 1px solid var(--red);
-    color: var(--red);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    padding: 14px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    margin-top: 10px;
-  }
-
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
   .load-more-btn {
     width: 100%;
     background: var(--surface2);
@@ -600,11 +496,7 @@
     border-radius: var(--radius);
     cursor: pointer;
     margin-top: 8px;
-    transition: color .2s, border-color .2s;
   }
-
-  .load-more-btn:active { color: var(--text); border-color: var(--accent); }
-
   .filter-strip {
     display: flex;
     align-items: center;
@@ -615,8 +507,8 @@
     font-size: 12px;
     color: var(--red);
   }
-
   .filter-strip span { margin-left: auto; color: var(--text-muted); font-size: 11px; }
+  .search-wrap { display:flex; gap:8px; margin-bottom:20px; }
 </style>
 </head>
 <body>
@@ -625,35 +517,28 @@
   <div class="tagline">YouTube — Shorts Removed</div>
 
   <div class="setup-card">
-    <h2>Connect Your Account</h2>
-    <p>Enter your YouTube Data API key to get started. Your key is stored only in your browser — never sent anywhere else.</p>
+    <h2>Sign in with Google</h2>
+    <p>Enter your Google OAuth Client ID, then connect your YouTube account with read-only access. This enables subscriptions and a real Watch Later view.</p>
+    <div class="field-label">Google OAuth Client ID</div>
+    <input type="text" id="client-id-input" placeholder="1234567890-abc123.apps.googleusercontent.com" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <button class="btn-primary" onclick="saveClientIdAndLaunch()">Save Client ID</button>
+    <button class="btn-secondary" onclick="signInYouTube()">Sign in with Google</button>
+    <div class="status-pill"><span class="dot" id="auth-dot"></span><span id="auth-status">Not signed in</span></div>
+  </div>
 
+  <div class="info-card">
+    <h2>Optional: API Key</h2>
+    <p>You can still add a YouTube Data API key for extra flexibility on public requests, but the signed-in experience now runs primarily on OAuth.</p>
     <div class="field-label">YouTube Data API v3 Key</div>
     <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-
-    <div class="field-label">Your YouTube Channel ID <span style="color:var(--text-muted);font-size:10px;text-transform:none">(for subscriptions)</span></div>
-    <input type="text" id="channel-id-input" placeholder="UCxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-
-    <button class="btn-primary" onclick="saveAndLaunch()">Launch CleanTube →</button>
+    <button class="btn-secondary" onclick="saveOptionalApiKey()">Save API Key</button>
   </div>
 
   <div class="steps">
-    <div class="step">
-      <div class="step-num">1</div>
-      <p>Go to <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a>, create a project, enable <strong>YouTube Data API v3</strong>, then create an <strong>API Key</strong>.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <p>For subscriptions, find your <strong>Channel ID</strong>: YouTube → Your Channel → URL contains <code>channel/UCxxxx</code>. Or use <a href="https://www.youtube.com/account_advanced" target="_blank">Account Advanced</a>.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <p>On iOS, tap <strong>Share → Add to Home Screen</strong> to install CleanTube as a PWA for the best experience.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">4</div>
-      <p><strong>Background audio:</strong> After tapping play, lock your screen. iOS will continue audio if you keep Safari/PWA open. Use your lock screen controls.</p>
-    </div>
+    <div class="step"><div class="step-num">1</div><p>Use the Firebase URL you already configured as an <strong>Authorized JavaScript origin</strong>.</p></div>
+    <div class="step"><div class="step-num">2</div><p>Use scope <code>https://www.googleapis.com/auth/youtube.readonly</code>.</p></div>
+    <div class="step"><div class="step-num">3</div><p>After signing in, CleanTube will load your subscriptions and try the special <strong>WL</strong> playlist for Watch Later.</p></div>
+    <div class="step"><div class="step-num">4</div><p>On iPhone, tap <strong>Share → Add to Home Screen</strong> for the best app-like experience.</p></div>
   </div>
 </div>
 
@@ -662,22 +547,16 @@
     <div class="nav-logo">CleanTube</div>
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="switchTab('feed')" id="tab-feed">Feed</button>
-      <button class="nav-tab" onclick="switchTab('watchlater')" id="tab-watchlater">Later</button>
+      <button class="nav-tab" onclick="switchTab('watchlater')" id="tab-watchlater">Watch Later</button>
       <button class="nav-tab" onclick="switchTab('search')" id="tab-search">Search</button>
     </div>
     <div class="nav-right">
+      <div class="user-chip" id="user-chip"></div>
       <div class="settings-btn" onclick="openSettings()">⚙</div>
     </div>
   </nav>
-
-  <div class="filter-strip">
-    🚫 YouTube Shorts are hidden
-    <span id="filtered-count"></span>
-  </div>
-
-  <main id="main-content">
-    <div class="loader"><div class="spinner"></div>Loading your feed…</div>
-  </main>
+  <div class="filter-strip">🚫 YouTube Shorts are hidden<span id="filtered-count"></span></div>
+  <main id="main-content"><div class="loader"><div class="spinner"></div>Loading…</div></main>
 </div>
 
 <div id="player-panel">
@@ -689,55 +568,167 @@
   <div class="player-info">
     <div id="playing-title"></div>
     <div id="playing-channel"></div>
-    <div class="bg-audio-notice">
-      <strong>Background Audio Tip:</strong> For audio to continue when your screen locks, keep this page open and press play. Then lock your screen — use your lock screen media controls to pause/resume. For best results, <strong>Add to Home Screen</strong> first (Share → Add to Home Screen).
-    </div>
+    <div class="bg-audio-notice"><strong>Background Audio Tip:</strong> Keep the page open after pressing play. Add to Home Screen on iPhone for the best odds of uninterrupted audio.</div>
   </div>
 </div>
 
 <div id="settings-modal" onclick="closeSettingsIfOutside(event)">
   <div class="modal-sheet">
     <h2>Settings</h2>
-    <div class="field-label">API Key</div>
+    <div class="field-label">Google OAuth Client ID</div>
+    <input type="text" id="settings-client-id" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <div class="field-label">Optional API Key</div>
     <input type="password" id="settings-api-key" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-    <div class="field-label" style="margin-top:12px">Channel ID</div>
-    <input type="text" id="settings-channel-id" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
     <button class="btn-primary" onclick="saveSettings()">Save Changes</button>
-    <button class="btn-secondary" onclick="closeSettings()">Cancel</button>
-    <button class="btn-danger" onclick="resetApp()">Reset & Sign Out</button>
+    <button class="btn-secondary" onclick="signInYouTube()">Refresh Google Login</button>
+    <button class="btn-secondary" onclick="signOutYouTube()">Sign Out</button>
+    <button class="btn-danger" onclick="resetApp()">Reset CleanTube</button>
   </div>
 </div>
 
 <div id="toast"></div>
 
 <script>
+const YT_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly';
+const SHORTS_MAX_DURATION_SECS = 65;
 let API_KEY = '';
-let CHANNEL_ID = '';
+let CLIENT_ID = '';
+let ACCESS_TOKEN = '';
+let TOKEN_EXPIRY = 0;
+let USER_NAME = '';
 let currentTab = 'feed';
 let nextPageTokens = {};
 let filteredShorts = 0;
-let totalFetched = 0;
-const SHORTS_MAX_DURATION_SECS = 65;
+let tokenClient = null;
 
 (function init() {
   API_KEY = localStorage.getItem('ct_api_key') || '';
-  CHANNEL_ID = localStorage.getItem('ct_channel_id') || '';
-  if (API_KEY) {
+  CLIENT_ID = localStorage.getItem('ct_client_id') || '';
+  ACCESS_TOKEN = sessionStorage.getItem('ct_access_token') || '';
+  TOKEN_EXPIRY = Number(sessionStorage.getItem('ct_token_expiry') || 0);
+  USER_NAME = sessionStorage.getItem('ct_user_name') || '';
+
+  document.getElementById('client-id-input').value = CLIENT_ID;
+  document.getElementById('api-key-input').value = API_KEY;
+
+  updateAuthStatus();
+  if (hasValidToken()) {
     showApp();
+    refreshProfileChip();
     loadTab('feed');
   }
 })();
 
-function saveAndLaunch() {
-  const k = document.getElementById('api-key-input').value.trim();
-  const c = document.getElementById('channel-id-input').value.trim();
-  if (!k) { showToast('Please enter your API key'); return; }
-  API_KEY = k;
-  CHANNEL_ID = c;
-  localStorage.setItem('ct_api_key', k);
-  if (c) localStorage.setItem('ct_channel_id', c);
-  showApp();
-  loadTab('feed');
+function hasValidToken() {
+  return !!ACCESS_TOKEN && Date.now() < TOKEN_EXPIRY;
+}
+
+function updateAuthStatus() {
+  const dot = document.getElementById('auth-dot');
+  const status = document.getElementById('auth-status');
+  if (hasValidToken()) {
+    dot.classList.add('ok');
+    status.textContent = USER_NAME ? `Signed in as ${USER_NAME}` : 'Signed in';
+  } else {
+    dot.classList.remove('ok');
+    status.textContent = CLIENT_ID ? 'Client ID saved — sign in next' : 'Not signed in';
+  }
+}
+
+function saveClientIdAndLaunch() {
+  const cid = document.getElementById('client-id-input').value.trim();
+  if (!cid) return showToast('Enter your Google OAuth Client ID');
+  CLIENT_ID = cid;
+  localStorage.setItem('ct_client_id', cid);
+  updateAuthStatus();
+  showToast('Client ID saved');
+}
+
+function saveOptionalApiKey() {
+  API_KEY = document.getElementById('api-key-input').value.trim();
+  localStorage.setItem('ct_api_key', API_KEY);
+  showToast(API_KEY ? 'API key saved' : 'API key cleared');
+}
+
+function ensureTokenClient() {
+  if (!CLIENT_ID) {
+    throw new Error('Save your Google OAuth Client ID first');
+  }
+  if (!window.google || !google.accounts || !google.accounts.oauth2) {
+    throw new Error('Google sign-in library not loaded yet');
+  }
+  if (!tokenClient) {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: YT_SCOPE,
+      callback: async (resp) => {
+        if (resp.error) {
+          showToast(resp.error);
+          return;
+        }
+        ACCESS_TOKEN = resp.access_token;
+        TOKEN_EXPIRY = Date.now() + ((resp.expires_in || 3600) * 1000) - 15000;
+        sessionStorage.setItem('ct_access_token', ACCESS_TOKEN);
+        sessionStorage.setItem('ct_token_expiry', String(TOKEN_EXPIRY));
+        await loadUserProfile();
+        updateAuthStatus();
+        showApp();
+        switchTab('feed');
+        showToast('Signed in successfully');
+      }
+    });
+  }
+}
+
+function signInYouTube() {
+  try {
+    saveClientIdAndLaunch();
+    ensureTokenClient();
+    tokenClient.requestAccessToken({ prompt: hasValidToken() ? '' : 'consent' });
+  } catch (e) {
+    showToast(e.message || 'Unable to start Google sign-in');
+  }
+}
+
+function signOutYouTube() {
+  if (window.google?.accounts?.oauth2 && ACCESS_TOKEN) {
+    google.accounts.oauth2.revoke(ACCESS_TOKEN, () => {});
+  }
+  ACCESS_TOKEN = '';
+  TOKEN_EXPIRY = 0;
+  USER_NAME = '';
+  sessionStorage.removeItem('ct_access_token');
+  sessionStorage.removeItem('ct_token_expiry');
+  sessionStorage.removeItem('ct_user_name');
+  refreshProfileChip();
+  updateAuthStatus();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+  showToast('Signed out');
+}
+
+async function loadUserProfile() {
+  try {
+    const data = await apiFetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true&maxResults=1', { auth: true });
+    const channel = data.items?.[0];
+    USER_NAME = channel?.snippet?.title || 'YouTube User';
+    sessionStorage.setItem('ct_user_name', USER_NAME);
+    refreshProfileChip();
+  } catch {
+    USER_NAME = 'YouTube User';
+    sessionStorage.setItem('ct_user_name', USER_NAME);
+    refreshProfileChip();
+  }
+}
+
+function refreshProfileChip() {
+  const chip = document.getElementById('user-chip');
+  if (USER_NAME) {
+    chip.textContent = USER_NAME;
+    chip.style.display = 'block';
+  } else {
+    chip.style.display = 'none';
+  }
 }
 
 function showApp() {
@@ -751,50 +742,33 @@ function switchTab(tab) {
   document.getElementById('tab-' + tab).classList.add('active');
   nextPageTokens = {};
   filteredShorts = 0;
-  totalFetched = 0;
   updateFilteredCount();
   loadTab(tab);
 }
 
 async function loadTab(tab, append = false) {
   const main = document.getElementById('main-content');
-  if (!append) {
-    main.innerHTML = '<div class="loader"><div class="spinner"></div>Loading…</div>';
-  }
-
+  if (!append) main.innerHTML = '<div class="loader"><div class="spinner"></div>Loading…</div>';
   if (tab === 'feed') await loadSubscriptionFeed(append);
   else if (tab === 'watchlater') await loadWatchLater(append);
   else if (tab === 'search') renderSearchUI();
 }
 
 async function loadSubscriptionFeed(append = false) {
-  if (!CHANNEL_ID) {
-    document.getElementById('main-content').innerHTML = `
-      <div class="empty">
-        <div class="icon">📺</div>
-        <p>Set your Channel ID in Settings to see your subscription feed.</p>
-      </div>`;
-    return;
+  if (!hasValidToken()) {
+    return showSigninRequired('Sign in to load your subscriptions feed.');
   }
-
   try {
-    const pageToken = nextPageTokens['feed'] || '';
-    const url = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&channelId=${CHANNEL_ID}&maxResults=20&order=relevance${pageToken ? '&pageToken='+pageToken : ''}&key=${API_KEY}`;
-    const data = await apiFetch(url);
-
-    const channelIds = data.items.map(i => i.snippet.resourceId.channelId);
-    nextPageTokens['feed'] = data.nextPageToken || null;
-
-    const videoPromises = channelIds.slice(0, 8).map(cid => getChannelRecentVideos(cid));
-    const videoArrays = await Promise.all(videoPromises);
-    let videos = videoArrays.flat();
-
-    videos.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-
+    const pageToken = nextPageTokens.feed || '';
+    const url = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=20${pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : ''}`;
+    const data = await apiFetch(url, { auth: true });
+    nextPageTokens.feed = data.nextPageToken || null;
+    const channelIds = data.items.map(i => i.snippet.resourceId.channelId).filter(Boolean);
+    const videoArrays = await Promise.all(channelIds.slice(0, 10).map(cid => getChannelRecentVideos(cid)));
+    const videos = videoArrays.flat().sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
     const filtered = await filterShorts(videos);
     renderVideos(filtered.longform, 'feed', append);
     filteredShorts += filtered.removedCount;
-    totalFetched += videos.length;
     updateFilteredCount();
   } catch (e) {
     showError(e);
@@ -803,14 +777,13 @@ async function loadSubscriptionFeed(append = false) {
 
 async function getChannelRecentVideos(channelId) {
   try {
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=5&order=date&type=video&key=${API_KEY}`;
-    const data = await apiFetch(url);
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${encodeURIComponent(channelId)}&maxResults=5&order=date&type=video`;
+    const data = await apiFetch(url, { auth: true, allowApiKeyFallback: true });
     return data.items.map(i => ({
       videoId: i.id.videoId,
       title: i.snippet.title,
       channel: i.snippet.channelTitle,
-      channelId,
-      thumbnail: (i.snippet.thumbnails.high || i.snippet.thumbnails.medium || i.snippet.thumbnails.default).url,
+      thumbnail: (i.snippet.thumbnails.high || i.snippet.thumbnails.medium || i.snippet.thumbnails.default || {}).url || '',
       publishedAt: i.snippet.publishedAt,
       description: i.snippet.description
     }));
@@ -820,62 +793,38 @@ async function getChannelRecentVideos(channelId) {
 }
 
 async function loadWatchLater(append = false) {
-  const savedPlaylistId = localStorage.getItem('ct_playlist_id') || '';
-
-  if (!savedPlaylistId) {
-    document.getElementById('main-content').innerHTML = `
-      <div class="setup-card" style="max-width:100%;margin-top:8px">
-        <h2>Watch Later / Playlist</h2>
-        <p>YouTube's "Watch Later" list requires full OAuth and cannot be accessed with a simple API key. <br><br>
-        Instead, enter any <strong>public or unlisted playlist ID</strong> you want to use as your personal queue. Create a playlist in YouTube, set it to Unlisted, and paste the ID below.</p>
-        <div class="field-label">Playlist ID</div>
-        <input type="text" id="playlist-id-input" placeholder="PLxxxxxxxxxxxxxxxxx" autocomplete="off" autocapitalize="none" spellcheck="false">
-        <button class="btn-primary" onclick="savePlaylistId()">Load Playlist →</button>
-      </div>`;
-    return;
+  if (!hasValidToken()) {
+    return showSigninRequired('Sign in to access your Watch Later list.');
   }
-
   try {
-    const pageToken = nextPageTokens['watchlater'] || '';
-    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${savedPlaylistId}&maxResults=25${pageToken ? '&pageToken='+pageToken : ''}&key=${API_KEY}`;
-    const data = await apiFetch(url);
-    nextPageTokens['watchlater'] = data.nextPageToken || null;
-
+    const pageToken = nextPageTokens.watchlater || '';
+    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=WL&maxResults=25${pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : ''}`;
+    const data = await apiFetch(url, { auth: true });
+    nextPageTokens.watchlater = data.nextPageToken || null;
     const videos = data.items
-      .filter(i => i.snippet.resourceId.kind === 'youtube#video')
+      .filter(i => i.snippet?.resourceId?.kind === 'youtube#video' && i.snippet.resourceId.videoId)
       .map(i => ({
         videoId: i.snippet.resourceId.videoId,
         title: i.snippet.title,
-        channel: i.snippet.videoOwnerChannelTitle || '',
+        channel: i.snippet.videoOwnerChannelTitle || i.snippet.channelTitle || '',
         thumbnail: (i.snippet.thumbnails.high || i.snippet.thumbnails.medium || i.snippet.thumbnails.default || {}).url || '',
-        publishedAt: i.snippet.publishedAt,
+        publishedAt: i.contentDetails?.videoPublishedAt || i.snippet.publishedAt,
         description: i.snippet.description
       }));
-
     const filtered = await filterShorts(videos);
     renderVideos(filtered.longform, 'watchlater', append);
     filteredShorts += filtered.removedCount;
-    totalFetched += videos.length;
     updateFilteredCount();
   } catch (e) {
-    showError(e);
+    showError(new Error('Watch Later failed. If this persists, double-check the OAuth scope/app mode and try signing in again.'));
   }
-}
-
-function savePlaylistId() {
-  const id = document.getElementById('playlist-id-input').value.trim();
-  if (!id) { showToast('Enter a playlist ID'); return; }
-  localStorage.setItem('ct_playlist_id', id);
-  loadTab('watchlater');
 }
 
 function renderSearchUI() {
   document.getElementById('main-content').innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:20px">
-      <input type="text" id="search-input" placeholder="Search YouTube…" style="flex:1"
-        onkeydown="if(event.key==='Enter')doSearch()"
-        autocorrect="off" autocapitalize="none" spellcheck="false">
-      <button class="btn-primary" style="width:auto;padding:0 20px;flex-shrink:0" onclick="doSearch()">Go</button>
+    <div class="search-wrap">
+      <input type="text" id="search-input" placeholder="Search YouTube…" style="flex:1" onkeydown="if(event.key==='Enter')doSearch()" autocorrect="off" autocapitalize="none" spellcheck="false">
+      <button class="btn-primary" style="width:auto;padding:0 20px;flex-shrink:0;margin-top:0" onclick="doSearch()">Go</button>
     </div>
     <div id="search-results"></div>`;
 }
@@ -885,71 +834,54 @@ async function doSearch() {
   if (!q) return;
   const resultsEl = document.getElementById('search-results');
   resultsEl.innerHTML = '<div class="loader"><div class="spinner"></div>Searching…</div>';
-
   try {
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoDuration=medium&maxResults=25&key=${API_KEY}`;
-    const url2 = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoDuration=long&maxResults=25&key=${API_KEY}`;
-
-    const [d1, d2] = await Promise.all([apiFetch(url), apiFetch(url2)]);
-    const allItems = [...d1.items, ...d2.items];
-    allItems.sort((a, b) => new Date(b.snippet.publishedAt) - new Date(a.snippet.publishedAt));
-
+    const urlA = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoDuration=medium&maxResults=25`;
+    const urlB = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoDuration=long&maxResults=25`;
+    const [d1, d2] = await Promise.all([
+      apiFetch(urlA, { auth: hasValidToken(), allowApiKeyFallback: true }),
+      apiFetch(urlB, { auth: hasValidToken(), allowApiKeyFallback: true })
+    ]);
+    const allItems = [...d1.items, ...d2.items].sort((a, b) => new Date(b.snippet.publishedAt) - new Date(a.snippet.publishedAt));
     const videos = allItems.map(i => ({
       videoId: i.id.videoId,
       title: i.snippet.title,
       channel: i.snippet.channelTitle,
-      thumbnail: (i.snippet.thumbnails.high || i.snippet.thumbnails.medium || i.snippet.thumbnails.default).url,
+      thumbnail: (i.snippet.thumbnails.high || i.snippet.thumbnails.medium || i.snippet.thumbnails.default || {}).url || '',
       publishedAt: i.snippet.publishedAt,
       description: i.snippet.description
     }));
-
     const filtered = await filterShorts(videos);
     filteredShorts += filtered.removedCount;
-    totalFetched += videos.length;
     updateFilteredCount();
-
-    if (filtered.longform.length === 0) {
+    if (!filtered.longform.length) {
       resultsEl.innerHTML = '<div class="empty"><div class="icon">🔍</div>No long-form results found.</div>';
-    } else {
-      resultsEl.innerHTML = '';
-      renderVideosInto(filtered.longform, resultsEl, 'search');
+      return;
     }
+    resultsEl.innerHTML = '';
+    renderVideosInto(filtered.longform, resultsEl, 'search');
   } catch (e) {
-    showError(e, document.getElementById('search-results'));
+    showError(e, resultsEl);
   }
 }
 
 async function filterShorts(videos) {
-  if (videos.length === 0) return { longform: [], removedCount: 0 };
-
+  if (!videos.length) return { longform: [], removedCount: 0 };
   const ids = videos.map(v => v.videoId).join(',');
   try {
-    const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${ids}&key=${API_KEY}`;
-    const data = await apiFetch(url);
-
-    const durationMap = {};
-    for (const item of data.items) {
-      durationMap[item.id] = {
-        secs: parseDuration(item.contentDetails.duration),
-        views: parseInt(item.statistics?.viewCount || 0, 10)
-      };
-    }
-
+    const data = await apiFetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}`, { auth: hasValidToken(), allowApiKeyFallback: true });
+    const durationMap = Object.fromEntries(data.items.map(item => [item.id, parseDuration(item.contentDetails.duration)]));
     const longform = [];
     let removedCount = 0;
-
     for (const v of videos) {
-      const info = durationMap[v.videoId];
-      if (!info) { longform.push(v); continue; }
-      if (info.secs <= SHORTS_MAX_DURATION_SECS) {
-        removedCount++;
-      } else {
-        v.durationSecs = info.secs;
-        v.durationLabel = formatDuration(info.secs);
+      const secs = durationMap[v.videoId];
+      if (secs == null) { longform.push(v); continue; }
+      if (secs <= SHORTS_MAX_DURATION_SECS) removedCount++;
+      else {
+        v.durationSecs = secs;
+        v.durationLabel = formatDuration(secs);
         longform.push(v);
       }
     }
-
     return { longform, removedCount };
   } catch {
     return { longform: videos, removedCount: 0 };
@@ -957,41 +889,30 @@ async function filterShorts(videos) {
 }
 
 function parseDuration(iso) {
-  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  const m = iso?.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!m) return 0;
   return (parseInt(m[1] || 0, 10) * 3600) + (parseInt(m[2] || 0, 10) * 60) + parseInt(m[3] || 0, 10);
 }
 
 function formatDuration(secs) {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-  return `${m}:${String(s).padStart(2,'0')}`;
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+  return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
 }
 
 function renderVideos(videos, tabKey, append = false) {
   const main = document.getElementById('main-content');
   if (!append) main.innerHTML = '';
-
-  if (videos.length === 0 && !append) {
-    main.innerHTML = '<div class="empty"><div class="icon">📭</div>No long-form videos found. All content may have been filtered as Shorts.</div>';
+  if (!videos.length && !append) {
+    main.innerHTML = '<div class="empty"><div class="icon">📭</div>No long-form videos found.</div>';
     return;
   }
-
-  const titles = {
-    feed: 'Subscriptions',
-    watchlater: 'Your Playlist',
-    search: 'Results'
-  };
-
+  const titles = { feed: 'Subscriptions', watchlater: 'Watch Later', search: 'Results' };
   if (!append) {
     const header = document.createElement('div');
     header.className = 'section-header';
-    header.innerHTML = `<div class="section-title">${titles[tabKey] || ''}</div>`;
+    header.innerHTML = `<div class="section-title">${titles[tabKey] || ''}</div><div class="badge">Shorts removed</div>`;
     main.appendChild(header);
   }
-
   renderVideosInto(videos, main, tabKey);
 }
 
@@ -1002,15 +923,12 @@ function renderVideosInto(videos, container, tabKey) {
     grid.className = 'video-grid';
     container.appendChild(grid);
   }
-
   videos.forEach((v, i) => {
     const card = document.createElement('div');
     card.className = 'video-card';
     card.style.animationDelay = `${i * 40}ms`;
-
     const initials = (v.channel || '?').charAt(0).toUpperCase();
     const timeAgo = v.publishedAt ? relativeTime(new Date(v.publishedAt)) : '';
-
     card.innerHTML = `
       <div class="thumb-wrap">
         <img src="${v.thumbnail}" loading="lazy" alt="">
@@ -1021,29 +939,19 @@ function renderVideosInto(videos, container, tabKey) {
         <div class="channel-avatar">${initials}</div>
         <div class="video-meta">
           <div class="video-title">${escHtml(v.title)}</div>
-          <div class="video-sub">
-            <span>${escHtml(v.channel || '')}</span>
-            ${timeAgo ? `<span>${timeAgo}</span>` : ''}
-          </div>
+          <div class="video-sub"><span>${escHtml(v.channel || '')}</span>${timeAgo ? `<span>${timeAgo}</span>` : ''}</div>
         </div>
       </div>`;
-
     card.addEventListener('click', () => playVideo(v));
     grid.appendChild(card);
   });
-
   const existing = container.querySelector('.load-more-btn');
   if (existing) existing.remove();
-
   if (nextPageTokens[tabKey]) {
     const btn = document.createElement('button');
     btn.className = 'load-more-btn';
     btn.textContent = 'Load More';
-    btn.onclick = () => {
-      btn.textContent = 'Loading…';
-      btn.disabled = true;
-      loadTab(tabKey, true);
-    };
+    btn.onclick = () => { btn.textContent = 'Loading…'; btn.disabled = true; loadTab(tabKey, true); };
     container.appendChild(btn);
   }
 }
@@ -1052,15 +960,7 @@ function playVideo(v) {
   document.getElementById('playing-title').textContent = v.title;
   document.getElementById('playing-channel').textContent = v.channel || '';
   document.getElementById('player-header-title').textContent = v.title;
-
-  const wrap = document.getElementById('yt-frame-wrap');
-  wrap.innerHTML = `<iframe
-    src="https://www.youtube.com/embed/${v.videoId}?autoplay=1&playsinline=1&rel=0"
-    allow="autoplay; fullscreen; picture-in-picture"
-    allowfullscreen
-    title="${escHtml(v.title)}">
-  </iframe>`;
-
+  document.getElementById('yt-frame-wrap').innerHTML = `<iframe src="https://www.youtube.com/embed/${v.videoId}?autoplay=1&playsinline=1&rel=0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="${escHtml(v.title)}"></iframe>`;
   document.getElementById('player-panel').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -1072,83 +972,72 @@ function closePlayer() {
 }
 
 function openSettings() {
+  document.getElementById('settings-client-id').value = CLIENT_ID;
   document.getElementById('settings-api-key').value = API_KEY;
-  document.getElementById('settings-channel-id').value = CHANNEL_ID;
   document.getElementById('settings-modal').classList.add('open');
 }
-
-function closeSettings() {
-  document.getElementById('settings-modal').classList.remove('open');
-}
-
-function closeSettingsIfOutside(e) {
-  if (e.target === document.getElementById('settings-modal')) closeSettings();
-}
-
+function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
+function closeSettingsIfOutside(e) { if (e.target === document.getElementById('settings-modal')) closeSettings(); }
 function saveSettings() {
-  const k = document.getElementById('settings-api-key').value.trim();
-  const c = document.getElementById('settings-channel-id').value.trim();
-  if (!k) { showToast('API key required'); return; }
-  API_KEY = k;
-  CHANNEL_ID = c;
-  localStorage.setItem('ct_api_key', k);
-  localStorage.setItem('ct_channel_id', c);
+  CLIENT_ID = document.getElementById('settings-client-id').value.trim();
+  API_KEY = document.getElementById('settings-api-key').value.trim();
+  localStorage.setItem('ct_client_id', CLIENT_ID);
+  localStorage.setItem('ct_api_key', API_KEY);
+  tokenClient = null;
   closeSettings();
-  showToast('Settings saved!');
-  switchTab(currentTab);
+  updateAuthStatus();
+  showToast('Settings saved');
 }
-
 function resetApp() {
-  if (!confirm('Reset CleanTube and sign out?')) return;
+  if (!confirm('Reset CleanTube completely?')) return;
   localStorage.clear();
+  sessionStorage.clear();
   location.reload();
 }
 
-async function apiFetch(url) {
-  const res = await fetch(url);
+async function apiFetch(url, opts = {}) {
+  const headers = {};
+  let finalUrl = url;
+  const wantsAuth = !!opts.auth;
+  if (wantsAuth) {
+    if (!hasValidToken()) throw new Error('Your sign-in expired. Please sign in again.');
+    headers.Authorization = `Bearer ${ACCESS_TOKEN}`;
+  } else if (opts.allowApiKeyFallback && API_KEY) {
+    finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(API_KEY);
+  }
+  const res = await fetch(finalUrl, { headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    const msg = err?.error?.message || `HTTP ${res.status}`;
-    throw new Error(msg);
+    throw new Error(err?.error?.message || `HTTP ${res.status}`);
   }
   return res.json();
 }
 
+function showSigninRequired(message) {
+  document.getElementById('main-content').innerHTML = `<div class="empty"><div class="icon">🔐</div><p>${escHtml(message)}</p><br><button class="btn-primary" onclick="signInYouTube()" style="max-width:240px">Sign in with Google</button></div>`;
+}
 function updateFilteredCount() {
-  const el = document.getElementById('filtered-count');
-  el.textContent = filteredShorts > 0 ? `${filteredShorts} Shorts blocked` : '';
+  document.getElementById('filtered-count').textContent = filteredShorts > 0 ? `${filteredShorts} Shorts blocked` : '';
 }
-
 function showError(e, el) {
-  const msg = e.message || 'Unknown error';
   const target = el || document.getElementById('main-content');
-  target.innerHTML = `<div class="empty">
-    <div class="icon">⚠️</div>
-    <p><strong>API Error</strong><br>${escHtml(msg)}<br><br>Check your API key in Settings or verify your Channel ID.</p>
-  </div>`;
+  target.innerHTML = `<div class="empty"><div class="icon">⚠️</div><p><strong>API Error</strong><br>${escHtml(e.message || 'Unknown error')}</p></div>`;
 }
-
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2800);
 }
-
 function escHtml(s) {
-  return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
 function relativeTime(date) {
   const diff = (Date.now() - date.getTime()) / 1000;
-  if (diff < 3600) return `${Math.max(1, Math.floor(diff/60))}m ago`;
-  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
-  if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
-  return date.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  if (diff < 3600) return `${Math.max(1, Math.floor(diff / 60))}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 </script>
 </body>
