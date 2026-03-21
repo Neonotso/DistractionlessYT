@@ -625,7 +625,7 @@ let filteredShorts = 0;
 let tokenClient = null;
 const savedLaterVideoIds = new Set();
 
-(function init() {
+(async function init() {
   API_KEY = localStorage.getItem('ct_api_key') || '';
   CLIENT_ID = localStorage.getItem('ct_client_id') || DEFAULT_CLIENT_ID;
   ACCESS_TOKEN = localStorage.getItem('ct_access_token') || '';
@@ -640,6 +640,20 @@ const savedLaterVideoIds = new Set();
     showApp();
     refreshProfileChip();
     switchTab('search');
+    return;
+  }
+
+  if (CLIENT_ID) {
+    try {
+      const refreshed = await trySilentSignIn();
+      if (refreshed) {
+        showApp();
+        refreshProfileChip();
+        switchTab('search');
+      }
+    } catch {
+      // stay on sign-in screen
+    }
   }
 })();
 
@@ -702,6 +716,52 @@ function signInYouTube() {
   } catch (e) {
     showToast(e.message || 'Unable to start Google sign-in');
   }
+}
+
+async function trySilentSignIn() {
+  if (!CLIENT_ID) return false;
+  if (!window.google || !google.accounts || !google.accounts.oauth2) {
+    await waitForGoogleLibrary();
+  }
+  return new Promise((resolve) => {
+    try {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: YT_SCOPE,
+        callback: async (resp) => {
+          if (resp.error || !resp.access_token) {
+            resolve(false);
+            return;
+          }
+          ACCESS_TOKEN = resp.access_token;
+          TOKEN_EXPIRY = Date.now() + ((resp.expires_in || 3600) * 1000) - 15000;
+          localStorage.setItem('ct_access_token', ACCESS_TOKEN);
+          localStorage.setItem('ct_token_expiry', String(TOKEN_EXPIRY));
+          await loadUserProfile();
+          updateAuthStatus();
+          resolve(true);
+        }
+      });
+      tokenClient.requestAccessToken({ prompt: '' });
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
+function waitForGoogleLibrary(timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const timer = setInterval(() => {
+      if (window.google?.accounts?.oauth2) {
+        clearInterval(timer);
+        resolve();
+      } else if (Date.now() - start > timeoutMs) {
+        clearInterval(timer);
+        reject(new Error('Google sign-in library timed out'));
+      }
+    }, 100);
+  });
 }
 
 function signOutYouTube() {
