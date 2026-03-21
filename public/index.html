@@ -580,6 +580,10 @@
 <script>
 const YT_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly';
 const SHORTS_MAX_DURATION_SECS = 65;
+const FEED_CHANNEL_BATCH_SIZE = 4;
+const FEED_VIDEOS_PER_CHANNEL = 2;
+const FEED_CACHE_KEY = 'ct_feed_cache_v1';
+const FEED_CACHE_TTL_MS = 10 * 60 * 1000;
 let API_KEY = '';
 let CLIENT_ID = '';
 let ACCESS_TOKEN = '';
@@ -744,17 +748,37 @@ async function loadSubscriptionFeed(append = false) {
     return showSigninRequired('Sign in to load your subscriptions feed.');
   }
   try {
+    if (!append) {
+      const cached = getCachedFeed();
+      if (cached) {
+        nextPageTokens.feed = cached.nextPageToken || null;
+        renderVideos(cached.videos || [], 'feed', false);
+        filteredShorts = cached.filteredShorts || 0;
+        updateFilteredCount();
+        return;
+      }
+    }
+
     const pageToken = nextPageTokens.feed || '';
-    const url = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=20${pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : ''}`;
+    const url = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=${FEED_CHANNEL_BATCH_SIZE}${pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : ''}`;
     const data = await apiFetch(url, { auth: true });
     nextPageTokens.feed = data.nextPageToken || null;
     const channelIds = data.items.map(i => i.snippet.resourceId.channelId).filter(Boolean);
-    const videoArrays = await Promise.all(channelIds.slice(0, 10).map(cid => getChannelRecentVideos(cid)));
+    const videoArrays = await Promise.all(channelIds.map(cid => getChannelRecentVideos(cid)));
     const videos = videoArrays.flat().sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
     const filtered = await filterShorts(videos);
     renderVideos(filtered.longform, 'feed', append);
     filteredShorts += filtered.removedCount;
     updateFilteredCount();
+
+    if (!append) {
+      setCachedFeed({
+        videos: filtered.longform,
+        filteredShorts,
+        nextPageToken: nextPageTokens.feed,
+        savedAt: Date.now()
+      });
+    }
   } catch (e) {
     showError(e);
   }
@@ -762,7 +786,7 @@ async function loadSubscriptionFeed(append = false) {
 
 async function getChannelRecentVideos(channelId) {
   try {
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${encodeURIComponent(channelId)}&maxResults=5&order=date&type=video`;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${encodeURIComponent(channelId)}&maxResults=${FEED_VIDEOS_PER_CHANNEL}&order=date&type=video`;
     const data = await apiFetch(url, { auth: true, allowApiKeyFallback: true });
     return data.items.map(i => {
       const thumb = (i.snippet.thumbnails.high || i.snippet.thumbnails.medium || i.snippet.thumbnails.default || {});
@@ -1040,6 +1064,29 @@ function resetApp() {
   localStorage.clear();
   sessionStorage.clear();
   location.reload();
+}
+
+function getCachedFeed() {
+  try {
+    const raw = sessionStorage.getItem(FEED_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed.savedAt || (Date.now() - parsed.savedAt) > FEED_CACHE_TTL_MS) {
+      sessionStorage.removeItem(FEED_CACHE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedFeed(payload) {
+  try {
+    sessionStorage.setItem(FEED_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore cache failures
+  }
 }
 
 async function apiFetch(url, opts = {}) {
