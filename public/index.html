@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -643,6 +644,8 @@ let filteredShorts = 0;
 let tokenClient = null;
 let currentPlayingVideo = null;
 let playbackSaveTimer = null;
+let ytPlayer = null;
+let ytApiReady = false;
 const savedLaterVideoIds = new Set();
 const likedVideoIds = new Set();
 
@@ -1220,14 +1223,23 @@ function playVideo(v) {
     <button class="mini-btn ${savedLaterVideoIds.has(v.videoId) ? 'saved' : ''}" ${savedLaterVideoIds.has(v.videoId) ? 'disabled' : ''} onclick="saveToLater('${v.videoId}', this)">${savedLaterVideoIds.has(v.videoId) ? '✓ Saved' : '＋ Later'}</button>
     <button class="mini-btn ${likedVideoIds.has(v.videoId) ? 'liked' : ''}" ${likedVideoIds.has(v.videoId) ? 'disabled' : ''} onclick="likeVideo('${v.videoId}', this)">${likedVideoIds.has(v.videoId) ? '♥ Liked' : '♥ Like'}</button>
   `;
-  document.getElementById('yt-frame-wrap').innerHTML = `<iframe id="yt-player-frame" src="https://www.youtube.com/embed/${v.videoId}?autoplay=1&playsinline=1&rel=0&enablejsapi=1${lastTime > 0 ? `&start=${Math.floor(lastTime)}` : ''}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="${escHtml(v.title)}"></iframe>`;
-  startPlaybackTracking();
+  document.getElementById('yt-frame-wrap').innerHTML = '<div id="yt-player-frame"></div>';
   document.getElementById('player-panel').classList.add('open');
   document.body.style.overflow = 'hidden';
+  initYouTubePlayer(v.videoId, lastTime);
 }
 
 function closePlayer() {
   stopPlaybackTracking();
+  try {
+    if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function' && currentPlayingVideo) {
+      setWatchProgress(currentPlayingVideo.videoId, ytPlayer.getCurrentTime());
+    }
+    ytPlayer?.destroy?.();
+  } catch {
+    // ignore player teardown errors
+  }
+  ytPlayer = null;
   document.getElementById('yt-frame-wrap').innerHTML = '';
   document.getElementById('player-panel').classList.remove('open');
   document.body.style.overflow = '';
@@ -1332,12 +1344,13 @@ function startPlaybackTracking() {
   stopPlaybackTracking();
   playbackSaveTimer = setInterval(() => {
     try {
-      const iframe = document.getElementById('yt-player-frame');
-      if (!iframe || !currentPlayingVideo) return;
-      iframe.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: currentPlayingVideo.videoId }), '*');
-      iframe.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'getCurrentTime', args: [], id: currentPlayingVideo.videoId }), '*');
+      if (!ytPlayer || !currentPlayingVideo) return;
+      const currentTime = ytPlayer.getCurrentTime?.();
+      if (typeof currentTime === 'number' && !Number.isNaN(currentTime)) {
+        setWatchProgress(currentPlayingVideo.videoId, currentTime);
+      }
     } catch {
-      // ignore cross-frame issues
+      // ignore polling errors
     }
   }, 5000);
 }
@@ -1349,17 +1362,44 @@ function stopPlaybackTracking() {
   }
 }
 
-window.addEventListener('message', (event) => {
-  try {
-    const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-    if (!currentPlayingVideo) return;
-    if (data?.event === 'infoDelivery' && typeof data.info?.currentTime === 'number') {
-      setWatchProgress(currentPlayingVideo.videoId, data.info.currentTime);
-    }
-  } catch {
-    // ignore unrelated postMessages
+window.onYouTubeIframeAPIReady = function () {
+  ytApiReady = true;
+};
+
+function initYouTubePlayer(videoId, startSeconds = 0) {
+  if (!ytApiReady || !window.YT?.Player) {
+    setTimeout(() => initYouTubePlayer(videoId, startSeconds), 200);
+    return;
   }
-});
+  try {
+    ytPlayer?.destroy?.();
+  } catch {
+    // ignore old player teardown errors
+  }
+  ytPlayer = new YT.Player('yt-player-frame', {
+    videoId,
+    playerVars: {
+      autoplay: 1,
+      playsinline: 1,
+      rel: 0,
+      start: Math.max(0, Math.floor(startSeconds || 0))
+    },
+    events: {
+      onReady: () => startPlaybackTracking(),
+      onStateChange: (event) => {
+        try {
+          if (!currentPlayingVideo) return;
+          const currentTime = ytPlayer?.getCurrentTime?.() || 0;
+          if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+            setWatchProgress(currentPlayingVideo.videoId, currentTime);
+          }
+        } catch {
+          // ignore state callback errors
+        }
+      }
+    }
+  });
+}
 
 function refreshFeed(force = false) {
   if (force) sessionStorage.removeItem(FEED_CACHE_KEY);
