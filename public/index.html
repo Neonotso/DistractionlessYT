@@ -621,6 +621,7 @@ const CHANNEL_UPLOADS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const SEARCH_CACHE_PREFIX = 'ct_search_cache_v1:';
 const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
 const LAST_SEARCH_KEY = 'ct_last_search_v1';
+const LIKED_VIDEOS_KEY = 'ct_liked_videos_v1';
 let API_KEY = '';
 let CLIENT_ID = '';
 let ACCESS_TOKEN = '';
@@ -646,6 +647,7 @@ const likedVideoIds = new Set();
     id: localStorage.getItem('ct_later_playlist_id') || '',
     name: localStorage.getItem('ct_later_playlist_name') || ''
   };
+  loadPersistedLikedVideos();
 
   document.getElementById('api-key-input').value = API_KEY;
 
@@ -1259,11 +1261,32 @@ function resetApp() {
   if (!confirm('Reset CleanTube completely?')) return;
   localStorage.clear();
   sessionStorage.clear();
+  likedVideoIds.clear();
+  savedLaterVideoIds.clear();
   location.reload();
 }
 
 function refreshApp() {
   window.location.reload();
+}
+
+function loadPersistedLikedVideos() {
+  try {
+    const raw = localStorage.getItem(LIKED_VIDEOS_KEY);
+    if (!raw) return;
+    const ids = JSON.parse(raw);
+    if (Array.isArray(ids)) ids.forEach(id => likedVideoIds.add(id));
+  } catch {
+    // ignore parse failures
+  }
+}
+
+function persistLikedVideos() {
+  try {
+    localStorage.setItem(LIKED_VIDEOS_KEY, JSON.stringify(Array.from(likedVideoIds)));
+  } catch {
+    // ignore storage failures
+  }
 }
 
 function refreshFeed(force = false) {
@@ -1306,6 +1329,7 @@ async function likeVideo(videoId, btn) {
     }
 
     likedVideoIds.add(videoId);
+    persistLikedVideos();
     if (btn) {
       btn.textContent = '♥ Liked';
       btn.classList.add('liked');
