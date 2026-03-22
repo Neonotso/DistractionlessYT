@@ -565,7 +565,13 @@
     color: var(--red);
   }
   .filter-strip span { margin-left: auto; color: var(--text-muted); font-size: 11px; }
-  .search-wrap { display:flex; gap:8px; margin-bottom:20px; }
+  .search-wrap { display:flex; gap:8px; margin-bottom:12px; }
+  .search-history {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
 </style>
 </head>
 <body>
@@ -661,6 +667,8 @@ const CHANNEL_UPLOADS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const SEARCH_CACHE_PREFIX = 'ct_search_cache_v1:';
 const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
 const LAST_SEARCH_KEY = 'ct_last_search_v1';
+const SEARCH_HISTORY_KEY = 'ct_search_history_v1';
+const SEARCH_HISTORY_LIMIT = 5;
 const LIKED_VIDEOS_KEY = 'ct_liked_videos_v1';
 const WATCH_PROGRESS_KEY = 'ct_watch_progress_v1';
 const LAST_WATCHED_VIDEO_KEY = 'ct_last_watched_video_v1';
@@ -1054,15 +1062,19 @@ async function loadWatchLater(append = false) {
 function renderSearchUI() {
   const lastQuery = sessionStorage.getItem(LAST_SEARCH_KEY) || '';
   const lastWatched = getLastWatchedVideo();
+  const history = getSearchHistory();
   document.getElementById('main-content').innerHTML = `
     <div class="search-wrap">
-      <input type="text" id="search-input" placeholder="Search YouTube…" value="${escHtml(lastQuery)}" style="flex:1" onkeydown="if(event.key==='Enter')doSearch()" autocorrect="off" autocapitalize="none" spellcheck="false">
+      <input type="text" id="search-input" placeholder="Search YouTube…" value="${escHtml(lastQuery)}" style="flex:1" oninput="renderSearchHistorySuggestions(this.value)" onfocus="renderSearchHistorySuggestions(this.value)" onkeydown="if(event.key==='Enter')doSearch()" autocorrect="off" autocapitalize="none" spellcheck="false">
       <button class="btn-primary" style="width:auto;padding:0 20px;flex-shrink:0;margin-top:0" onclick="doSearch()">Go</button>
       <button class="btn-secondary" style="width:auto;padding:0 16px;flex-shrink:0;margin-top:0" onclick="clearSearch()">Clear</button>
     </div>
+    <div id="search-history" class="search-history"></div>
     <div id="search-empty-state" class="empty" style="padding:26px 12px"><div class="icon">🔎</div><p>Search opens first to keep quota usage low. Feed and Later are still available when you want them.</p></div>
     <div id="search-results"></div>
     <div id="continue-watching"></div>`;
+
+  renderSearchHistorySuggestions(lastQuery);
 
   if (lastQuery) {
     const cached = getCachedSearch(lastQuery);
@@ -1088,6 +1100,8 @@ async function doSearch() {
   const q = document.getElementById('search-input').value.trim();
   if (!q) return;
   sessionStorage.setItem(LAST_SEARCH_KEY, q);
+  pushSearchHistory(q);
+  renderSearchHistorySuggestions(q);
   const resultsEl = document.getElementById('search-results');
   document.getElementById('search-empty-state')?.remove();
 
@@ -1470,6 +1484,44 @@ function initYouTubePlayer(videoId, startSeconds = 0) {
   });
 }
 
+function getSearchHistory() {
+  try {
+    const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
+    const arr = JSON.parse(raw || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function pushSearchHistory(query) {
+  const clean = String(query || '').trim();
+  if (!clean) return;
+  const history = getSearchHistory().filter(item => item.toLowerCase() !== clean.toLowerCase());
+  history.unshift(clean);
+  try {
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, SEARCH_HISTORY_LIMIT)));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function renderSearchHistorySuggestions(currentValue = '') {
+  const container = document.getElementById('search-history');
+  if (!container) return;
+  const value = String(currentValue || '').trim().toLowerCase();
+  const history = getSearchHistory().filter(item => !value || item.toLowerCase().includes(value));
+  container.innerHTML = history.length
+    ? history.map(item => `<button class="mini-btn" onclick="useSearchHistory('${escAttr(item)}')">${escHtml(item)}</button>`).join('')
+    : '';
+}
+
+function useSearchHistory(query) {
+  const input = document.getElementById('search-input');
+  if (input) input.value = query;
+  doSearch();
+}
+
 function renderContinueWatching(video) {
   const container = document.getElementById('continue-watching');
   if (!container || !video?.videoId) return;
@@ -1496,6 +1548,7 @@ function clearSearch() {
   sessionStorage.removeItem(LAST_SEARCH_KEY);
   const input = document.getElementById('search-input');
   if (input) input.value = '';
+  renderSearchHistorySuggestions('');
   const results = document.getElementById('search-results');
   if (results) results.innerHTML = '';
   if (!document.getElementById('search-empty-state')) {
@@ -1850,21 +1903,40 @@ function setCachedChannelUploads(channelId, payload) {
 }
 
 async function apiFetch(url, opts = {}) {
-  const headers = {};
-  let finalUrl = url;
   const wantsAuth = !!opts.auth;
-  if (wantsAuth) {
-    if (!hasValidToken()) throw new Error('Your sign-in expired. Please sign in again.');
-    headers.Authorization = `Bearer ${ACCESS_TOKEN}`;
-  } else if (opts.allowApiKeyFallback && API_KEY) {
+  let finalUrl = url;
+
+  if (!wantsAuth && opts.allowApiKeyFallback && API_KEY) {
     finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(API_KEY);
   }
-  const res = await fetch(finalUrl, { headers });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+
+  async function runFetch() {
+    const headers = {};
+    if (wantsAuth) {
+      headers.Authorization = `Bearer ${ACCESS_TOKEN}`;
+    }
+    const res = await fetch(finalUrl, { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${res.status}`);
+    }
+    return res.json();
   }
-  return res.json();
+
+  if (wantsAuth && !hasValidToken()) {
+    const refreshed = await trySilentSignIn().catch(() => false);
+    if (!refreshed) throw new Error('Your sign-in expired. Please sign in again.');
+  }
+
+  try {
+    return await runFetch();
+  } catch (e) {
+    if (wantsAuth && /expired|login required|invalid credentials|unauthorized|auth/i.test(String(e.message || ''))) {
+      const refreshed = await trySilentSignIn().catch(() => false);
+      if (refreshed) return runFetch();
+    }
+    throw e;
+  }
 }
 
 function showSigninRequired(message) {
