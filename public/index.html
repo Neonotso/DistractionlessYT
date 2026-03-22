@@ -1290,6 +1290,7 @@ async function saveToLater(videoId, btn) {
       body: JSON.stringify({
         snippet: {
           playlistId: LATER_PLAYLIST.id,
+          position: 0,
           resourceId: {
             kind: 'youtube#video',
             videoId
