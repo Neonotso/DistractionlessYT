@@ -1313,6 +1313,11 @@ async function likeVideo(videoId, btn) {
     btn.textContent = 'Liking…';
   }
 
+  let rateStatus = null;
+  let rateOk = false;
+  let rateBody = null;
+  let verifiedRating = 'unknown';
+
   try {
     const res = await fetch(`https://www.googleapis.com/youtube/v3/videos/rate?id=${encodeURIComponent(videoId)}&rating=like`, {
       method: 'POST',
@@ -1321,21 +1326,25 @@ async function likeVideo(videoId, btn) {
       }
     });
 
+    rateStatus = res.status;
+    rateOk = res.ok;
+
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      const apiMessage = body?.error?.message || `HTTP ${res.status}`;
-      const apiReason = body?.error?.errors?.[0]?.reason || '';
+      rateBody = await res.json().catch(() => ({}));
+      const apiMessage = rateBody?.error?.message || `HTTP ${res.status}`;
+      const apiReason = rateBody?.error?.errors?.[0]?.reason || '';
       throw new Error(apiReason ? `${apiMessage} [${apiReason}]` : apiMessage);
     }
 
-    const verified = await verifyVideoLiked(videoId);
-    if (!verified) {
+    verifiedRating = await verifyVideoLiked(videoId);
+    if (verifiedRating !== 'like') {
       throw new Error('Like not confirmed by YouTube');
     }
 
     likedVideoIds.add(videoId);
     persistLikedVideos();
-    const details = `channel=${USER_NAME || '(unknown)'}\nchannelId=${USER_CHANNEL_ID || '(unknown)'}\nvideoId=${videoId}\nverifiedLike=true`;
+    const details = `channel=${USER_NAME || '(unknown)'}\nchannelId=${USER_CHANNEL_ID || '(unknown)'}\nvideoId=${videoId}\nrateStatus=${rateStatus}\nrateOk=${rateOk}\nverifiedMyRating=${verifiedRating}`;
+    console.log('Like debug success', { videoId, rateStatus, rateOk, verifiedRating, channelId: USER_CHANNEL_ID });
     showPersistentSuccess('Like confirmed', details, [
       { label: 'Open video on YouTube', href: `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}` }
     ]);
@@ -1347,7 +1356,8 @@ async function likeVideo(videoId, btn) {
     showToast('Video liked');
   } catch (e) {
     const msg = e.message || 'Unknown error';
-    const details = `channel=${USER_NAME || '(unknown)'}\nchannelId=${USER_CHANNEL_ID || '(unknown)'}\nvideoId=${videoId}\nverifiedLike=false`;
+    const details = `channel=${USER_NAME || '(unknown)'}\nchannelId=${USER_CHANNEL_ID || '(unknown)'}\nvideoId=${videoId}\nrateStatus=${rateStatus ?? '(none)'}\nrateOk=${rateOk}\nverifiedMyRating=${verifiedRating}${rateBody ? `\nrateBody=${JSON.stringify(rateBody)}` : ''}`;
+    console.error('Like debug failure', { videoId, rateStatus, rateOk, verifiedRating, rateBody, channelId: USER_CHANNEL_ID, message: msg });
     showToast(`Could not like: ${msg}`);
     showPersistentError(`Could not like: ${msg}`, details);
     if (btn) {
@@ -1361,9 +1371,9 @@ async function likeVideo(videoId, btn) {
 async function verifyVideoLiked(videoId) {
   try {
     const data = await apiFetch(`https://www.googleapis.com/youtube/v3/videos?part=myRating&id=${encodeURIComponent(videoId)}`, { auth: true });
-    return data.items?.[0]?.myRating === 'like';
+    return data.items?.[0]?.myRating || 'none';
   } catch {
-    return false;
+    return 'error';
   }
 }
 
