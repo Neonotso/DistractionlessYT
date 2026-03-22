@@ -437,6 +437,12 @@
     color: var(--text-muted);
     line-height: 1.6;
   }
+  .player-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
   .loader {
     display: flex;
     flex-direction: column;
@@ -583,6 +589,7 @@
   <div class="player-info">
     <div id="playing-title"></div>
     <div id="playing-channel"></div>
+    <div class="player-actions" id="player-actions"></div>
     <div class="bg-audio-notice"><strong>Background Audio Tip:</strong> Keep the page open after pressing play. Add to Home Screen on iPhone for the best odds of uninterrupted audio.</div>
   </div>
 </div>
@@ -1209,6 +1216,10 @@ function playVideo(v) {
   document.getElementById('playing-title').textContent = v.title;
   document.getElementById('playing-channel').textContent = v.channel || '';
   document.getElementById('player-header-title').textContent = v.title;
+  document.getElementById('player-actions').innerHTML = `
+    <button class="mini-btn ${savedLaterVideoIds.has(v.videoId) ? 'saved' : ''}" ${savedLaterVideoIds.has(v.videoId) ? 'disabled' : ''} onclick="saveToLater('${v.videoId}', this)">${savedLaterVideoIds.has(v.videoId) ? '✓ Saved' : '＋ Later'}</button>
+    <button class="mini-btn ${likedVideoIds.has(v.videoId) ? 'liked' : ''}" ${likedVideoIds.has(v.videoId) ? 'disabled' : ''} onclick="likeVideo('${v.videoId}', this)">${likedVideoIds.has(v.videoId) ? '♥ Liked' : '♥ Like'}</button>
+  `;
   document.getElementById('yt-frame-wrap').innerHTML = `<iframe id="yt-player-frame" src="https://www.youtube.com/embed/${v.videoId}?autoplay=1&playsinline=1&rel=0&enablejsapi=1${lastTime > 0 ? `&start=${Math.floor(lastTime)}` : ''}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="${escHtml(v.title)}"></iframe>`;
   startPlaybackTracking();
   document.getElementById('player-panel').classList.add('open');
