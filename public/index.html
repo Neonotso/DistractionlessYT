@@ -348,6 +348,11 @@
     border-color: var(--green);
     background: rgba(87,211,140,.08);
   }
+  .mini-btn.liked {
+    color: #ff6b8a;
+    border-color: #ff6b8a;
+    background: rgba(255,107,138,.08);
+  }
   .mini-btn:disabled {
     opacity: .9;
     cursor: default;
@@ -628,6 +633,7 @@ let nextPageTokens = {};
 let filteredShorts = 0;
 let tokenClient = null;
 const savedLaterVideoIds = new Set();
+const likedVideoIds = new Set();
 
 (async function init() {
   API_KEY = localStorage.getItem('ct_api_key') || '';
@@ -980,6 +986,7 @@ async function loadWatchLater(append = false) {
         description: i.snippet.description
       }));
 
+    videos.forEach(v => savedLaterVideoIds.add(v.videoId));
     const filtered = await filterShorts(videos);
     if (!filtered.longform.length && !videos.length && !append) {
       document.getElementById('main-content').innerHTML = `<div class="empty"><div class="icon">🕒</div><p>No items were returned from <strong>${escHtml(sourceLabel)}</strong>.<br><br>${LATER_PLAYLIST.id ? 'If that is unexpected, double-check the playlist ID and make sure the playlist is accessible to the signed-in account.' : 'You can add a fallback playlist ID in Settings and use that as your Later queue.'}</p></div>`;
@@ -1172,6 +1179,7 @@ function renderVideosInto(videos, container, tabKey) {
           <div class="video-sub"><span>${escHtml(v.channel || '')}</span>${timeAgo ? `<span>${timeAgo}</span>` : ''}</div>
           <div class="video-actions">
             <button class="mini-btn ${savedLaterVideoIds.has(v.videoId) ? 'saved' : ''}" ${savedLaterVideoIds.has(v.videoId) ? 'disabled' : ''} onclick="event.stopPropagation(); saveToLater('${v.videoId}', this)">${savedLaterVideoIds.has(v.videoId) ? '✓ Saved' : '＋ Later'}</button>
+            <button class="mini-btn ${likedVideoIds.has(v.videoId) ? 'liked' : ''}" ${likedVideoIds.has(v.videoId) ? 'disabled' : ''} onclick="event.stopPropagation(); likeVideo('${v.videoId}', this)">${likedVideoIds.has(v.videoId) ? '♥ Liked' : '♥ Like'}</button>
           </div>
         </div>
       </div>`;
@@ -1258,6 +1266,55 @@ function refreshFeed(force = false) {
   updateFilteredCount();
   nextPageTokens.feed = '';
   loadSubscriptionFeed(false);
+}
+
+async function likeVideo(videoId, btn) {
+  if (!hasValidToken()) {
+    showToast('Sign in first');
+    return;
+  }
+  if (likedVideoIds.has(videoId)) {
+    showToast('Already liked');
+    return;
+  }
+
+  const originalText = btn?.textContent;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Liking…';
+  }
+
+  try {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos/rate?id=${encodeURIComponent(videoId)}&rating=like`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ACCESS_TOKEN}`
+      }
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const apiMessage = body?.error?.message || `HTTP ${res.status}`;
+      const apiReason = body?.error?.errors?.[0]?.reason || '';
+      throw new Error(apiReason ? `${apiMessage} [${apiReason}]` : apiMessage);
+    }
+
+    likedVideoIds.add(videoId);
+    if (btn) {
+      btn.textContent = '♥ Liked';
+      btn.classList.add('liked');
+      btn.disabled = true;
+    }
+    showToast('Video liked');
+  } catch (e) {
+    const msg = e.message || 'Unknown error';
+    showToast(`Could not like: ${msg}`);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText || '♥ Like';
+      btn.classList.remove('liked');
+    }
+  }
 }
 
 async function saveToLater(videoId, btn) {
