@@ -1328,8 +1328,17 @@ async function likeVideo(videoId, btn) {
       throw new Error(apiReason ? `${apiMessage} [${apiReason}]` : apiMessage);
     }
 
+    const verified = await verifyVideoLiked(videoId);
+    if (!verified) {
+      throw new Error('Like not confirmed by YouTube');
+    }
+
     likedVideoIds.add(videoId);
     persistLikedVideos();
+    const details = `channel=${USER_NAME || '(unknown)'}\nchannelId=${USER_CHANNEL_ID || '(unknown)'}\nvideoId=${videoId}\nverifiedLike=true`;
+    showPersistentSuccess('Like confirmed', details, [
+      { label: 'Open video on YouTube', href: `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}` }
+    ]);
     if (btn) {
       btn.textContent = '♥ Liked';
       btn.classList.add('liked');
@@ -1338,12 +1347,23 @@ async function likeVideo(videoId, btn) {
     showToast('Video liked');
   } catch (e) {
     const msg = e.message || 'Unknown error';
+    const details = `channel=${USER_NAME || '(unknown)'}\nchannelId=${USER_CHANNEL_ID || '(unknown)'}\nvideoId=${videoId}\nverifiedLike=false`;
     showToast(`Could not like: ${msg}`);
+    showPersistentError(`Could not like: ${msg}`, details);
     if (btn) {
       btn.disabled = false;
       btn.textContent = originalText || '♥ Like';
       btn.classList.remove('liked');
     }
+  }
+}
+
+async function verifyVideoLiked(videoId) {
+  try {
+    const data = await apiFetch(`https://www.googleapis.com/youtube/v3/videos?part=myRating&id=${encodeURIComponent(videoId)}`, { auth: true });
+    return data.items?.[0]?.myRating === 'like';
+  } catch {
+    return false;
   }
 }
 
