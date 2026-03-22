@@ -593,6 +593,7 @@
     </select>
     <button class="btn-secondary" onclick="loadPlaylistOptions()">Refresh Playlist List</button>
     <div id="settings-playlist-debug" style="margin:10px 0 4px;color:var(--text-muted);font-size:12px;line-height:1.5"></div>
+    <div id="settings-account-debug" style="margin:10px 0 4px;color:var(--text-muted);font-size:12px;line-height:1.5"></div>
     <button class="btn-primary" onclick="saveSettings()">Save Changes</button>
     <button class="btn-secondary" onclick="signInYouTube()">Refresh Google Login</button>
     <button class="btn-secondary" onclick="signOutYouTube()">Sign Out</button>
@@ -620,6 +621,7 @@ let CLIENT_ID = '';
 let ACCESS_TOKEN = '';
 let TOKEN_EXPIRY = 0;
 let USER_NAME = '';
+let USER_CHANNEL_ID = '';
 let LATER_PLAYLIST_ID = '';
 let LATER_PLAYLIST_NAME = '';
 let currentTab = 'search';
@@ -634,6 +636,7 @@ const savedLaterVideoIds = new Set();
   ACCESS_TOKEN = localStorage.getItem('ct_access_token') || '';
   TOKEN_EXPIRY = Number(localStorage.getItem('ct_token_expiry') || 0);
   USER_NAME = localStorage.getItem('ct_user_name') || '';
+  USER_CHANNEL_ID = localStorage.getItem('ct_user_channel_id') || '';
   LATER_PLAYLIST_ID = localStorage.getItem('ct_later_playlist_id') || '';
   LATER_PLAYLIST_NAME = localStorage.getItem('ct_later_playlist_name') || '';
 
@@ -778,6 +781,7 @@ function signOutYouTube() {
   localStorage.removeItem('ct_access_token');
   localStorage.removeItem('ct_token_expiry');
   localStorage.removeItem('ct_user_name');
+  localStorage.removeItem('ct_user_channel_id');
   refreshProfileChip();
   updateAuthStatus();
   document.getElementById('app').style.display = 'none';
@@ -790,11 +794,15 @@ async function loadUserProfile() {
     const data = await apiFetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true&maxResults=1', { auth: true });
     const channel = data.items?.[0];
     USER_NAME = channel?.snippet?.title || 'YouTube User';
+    USER_CHANNEL_ID = channel?.id || '';
     localStorage.setItem('ct_user_name', USER_NAME);
+    localStorage.setItem('ct_user_channel_id', USER_CHANNEL_ID);
     refreshProfileChip();
   } catch {
     USER_NAME = 'YouTube User';
+    USER_CHANNEL_ID = '';
     localStorage.setItem('ct_user_name', USER_NAME);
+    localStorage.removeItem('ct_user_channel_id');
     refreshProfileChip();
   }
 }
@@ -1199,6 +1207,7 @@ async function openSettings() {
   document.getElementById('settings-api-key').value = API_KEY;
   await loadPlaylistOptions();
   updatePlaylistDebug();
+  updateAccountDebug();
   document.getElementById('settings-modal').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
@@ -1292,12 +1301,14 @@ async function saveToLater(videoId, btn) {
 
     savedLaterVideoIds.add(videoId);
     clearPersistentError();
+    const successDetails = `channel=${USER_NAME || '(unknown)'}\nchannelId=${USER_CHANNEL_ID || '(unknown)'}\nplaylist=${LATER_PLAYLIST_NAME || '(unknown)'}\nplaylistId=${LATER_PLAYLIST_ID}\nvideoId=${videoId}\ninsertedPlaylistItemId=${body?.id || '(missing)'}\nverified=true`;
+    showPersistentSuccess(`Saved to Later: ${LATER_PLAYLIST_NAME || LATER_PLAYLIST_ID}`, successDetails);
     if (btn) {
       btn.textContent = '✓ Saved';
       btn.classList.add('saved');
       btn.disabled = true;
     }
-    showToast(`Saved to Later: ${LATER_PLAYLIST_NAME || LATER_PLAYLIST_ID}`);
+    showToast(`Saved to Later: ${LATER_PLAYLIST_NAME || LATER_PLAYLIST_ID} (${LATER_PLAYLIST_ID})`);
     if (currentTab === 'watchlater') {
       nextPageTokens.watchlater = '';
       loadWatchLater(false);
@@ -1322,8 +1333,9 @@ async function saveToLater(videoId, btn) {
       ? `Could not save: ${msg}. Try Sign Out → Sign In again.`
       : `Could not save: ${msg}`;
 
+    const failureDetails = `channel=${USER_NAME || '(unknown)'}\nchannelId=${USER_CHANNEL_ID || '(unknown)'}\nplaylist=${LATER_PLAYLIST_NAME || '(unknown)'}\nplaylistId=${LATER_PLAYLIST_ID || '(none)'}\nvideoId=${videoId}\nverified=false`;
     showToast(visibleMsg);
-    showPersistentError(visibleMsg);
+    showPersistentError(visibleMsg, failureDetails);
 
     if (btn) {
       btn.disabled = false;
@@ -1391,7 +1403,17 @@ function updatePlaylistDebug() {
     el.textContent = 'No Later playlist selected yet.';
     return;
   }
-  el.innerHTML = `Selected Later playlist: <strong>${escHtml(LATER_PLAYLIST_NAME || '(unknown name)')}</strong><br>ID: <code>${escHtml(LATER_PLAYLIST_ID)}</code>`;
+  el.innerHTML = `Selected Later playlist: <strong>${escHtml(LATER_PLAYLIST_NAME || '(unknown name)')}</strong><br>ID: <code>${escHtml(LATER_PLAYLIST_ID)}</code><br><a href="https://www.youtube.com/playlist?list=${encodeURIComponent(LATER_PLAYLIST_ID)}" target="_blank" rel="noopener noreferrer">Open playlist in YouTube ↗</a>`;
+}
+
+function updateAccountDebug() {
+  const el = document.getElementById('settings-account-debug');
+  if (!el) return;
+  if (!USER_NAME && !USER_CHANNEL_ID) {
+    el.textContent = 'Signed-in YouTube channel details unavailable.';
+    return;
+  }
+  el.innerHTML = `Signed in as: <strong>${escHtml(USER_NAME || '(unknown)')}</strong><br>Channel ID: <code>${escHtml(USER_CHANNEL_ID || '(unknown)')}</code><br>Scope: <code>${escHtml(YT_SCOPE)}</code>`;
 }
 
 function getCachedFeed() {
@@ -1494,7 +1516,7 @@ function showError(e, el) {
   const target = el || document.getElementById('main-content');
   target.innerHTML = `<div class="empty"><div class="icon">⚠️</div><p><strong>API Error</strong><br>${escHtml(e.message || 'Unknown error')}</p></div>`;
 }
-function showPersistentError(msg) {
+function showPersistentError(msg, details = '') {
   const main = document.getElementById('main-content');
   if (!main) return;
   const existing = document.getElementById('persistent-error');
@@ -1502,7 +1524,18 @@ function showPersistentError(msg) {
   const box = document.createElement('div');
   box.id = 'persistent-error';
   box.style.cssText = 'margin-bottom:16px;padding:12px 14px;border:1px solid var(--red);background:rgba(255,68,68,.08);color:var(--text);border-radius:12px;font-size:13px;line-height:1.5;';
-  box.innerHTML = `<strong>Save failed</strong><br>${escHtml(msg)}`;
+  box.innerHTML = `<strong>Save failed</strong><br>${escHtml(msg)}${details ? `<br><br><code style="white-space:pre-wrap;word-break:break-word;display:block">${escHtml(details)}</code>` : ''}`;
+  main.prepend(box);
+}
+function showPersistentSuccess(msg, details = '') {
+  const main = document.getElementById('main-content');
+  if (!main) return;
+  const existing = document.getElementById('persistent-error');
+  if (existing) existing.remove();
+  const box = document.createElement('div');
+  box.id = 'persistent-error';
+  box.style.cssText = 'margin-bottom:16px;padding:12px 14px;border:1px solid var(--green);background:rgba(87,211,140,.08);color:var(--text);border-radius:12px;font-size:13px;line-height:1.5;';
+  box.innerHTML = `<strong>Save debug</strong><br>${escHtml(msg)}${details ? `<br><br><code style="white-space:pre-wrap;word-break:break-word;display:block">${escHtml(details)}</code>` : ''}`;
   main.prepend(box);
 }
 function clearPersistentError() {
