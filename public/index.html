@@ -581,24 +581,22 @@
 
   <div class="setup-card">
     <h2>Sign in with Google</h2>
-    <p>Connect your YouTube account with read-only access. This enables subscriptions and the Later queue view.</p>
+    <p>Connect your YouTube account. This enables subscriptions and the Later queue view.</p>
     <button class="btn-primary" onclick="signInYouTube()">Sign in with Google</button>
     <div class="status-pill"><span class="dot" id="auth-dot"></span><span id="auth-status">Not signed in</span></div>
   </div>
 
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><p>After signing in, FocusTube will load your subscriptions. You can use your own playlist as the <strong>Later</strong> queue.</p></div>
+    <div class="step"><div class="step-num">2</div><p>On iPhone, tap <strong>Share → Add to Home Screen</strong> for the best app-like experience.</p></div>
+  </div>
+  
   <div class="info-card">
     <h2>Optional: API Key</h2>
-    <p>You can still add a YouTube Data API key for extra flexibility on public requests, but the signed-in experience now runs primarily on OAuth.</p>
+    <p>For advanced users, you can add a YouTube Data API key for extra flexibility on public requests.</p>
     <div class="field-label">YouTube Data API v3 Key</div>
     <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
     <button class="btn-secondary" onclick="saveOptionalApiKey()">Save API Key</button>
-  </div>
-
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div><p>Use the Firebase URL you already configured as an <strong>Authorized JavaScript origin</strong>.</p></div>
-    <div class="step"><div class="step-num">2</div><p>Use scope <code>https://www.googleapis.com/auth/youtube.force-ssl</code> so the app can read your account and perform write actions like saving to Later and liking videos.</p></div>
-    <div class="step"><div class="step-num">3</div><p>After signing in, FocusTube will load your subscriptions and try YouTube's special Watch Later list first. If that fails, you can use your own playlist as the <strong>Later</strong> queue.</p></div>
-    <div class="step"><div class="step-num">4</div><p>On iPhone, tap <strong>Share → Add to Home Screen</strong> for the best app-like experience.</p></div>
   </div>
 </div>
 
@@ -635,13 +633,13 @@
 <div id="settings-modal" onclick="closeSettingsIfOutside(event)">
   <div class="modal-sheet">
     <h2>Settings</h2>
-    <div class="field-label">Optional API Key</div>
-    <input type="password" id="settings-api-key" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
     <div class="field-label">Later Playlist <span style="text-transform:none;letter-spacing:normal">(fallback if Watch Later is unavailable)</span></div>
     <select id="settings-playlist-select" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:14px 16px;outline:none;margin-bottom:16px;appearance:none;">
       <option value="">None selected</option>
     </select>
     <button class="btn-secondary" onclick="loadPlaylistOptions()">Refresh Playlist List</button>
+    <div class="field-label">Optional API Key</div>
+    <input type="password" id="settings-api-key" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
     <div id="settings-playlist-debug" style="margin:10px 0 4px;color:var(--text-muted);font-size:12px;line-height:1.5"></div>
     <div id="settings-account-debug" style="margin:10px 0 4px;color:var(--text-muted);font-size:12px;line-height:1.5"></div>
     <button class="btn-primary" onclick="saveSettings()">Save Changes</button>
@@ -1024,7 +1022,7 @@ async function loadWatchLater(append = false) {
       data = await fetchPlaylistItems(LATER_PLAYLIST.id);
       playlistId = LATER_PLAYLIST.id;
       sourceLabel = `Later playlist: ${LATER_PLAYLIST.name || playlistId} (${playlistId})`;
-      showToast(`Using your fallback Later playlist: ${LATER_PLAYLIST.name || playlistId}`);
+      showToast(`Using your Later playlist: ${LATER_PLAYLIST.name || playlistId}`);
     }
 
     nextPageTokens.watchlater = data.nextPageToken || null;
