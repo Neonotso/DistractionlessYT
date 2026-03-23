@@ -43,6 +43,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    margin-top: 60px;
     padding: 32px 24px calc(32px + var(--safe-bottom));
     background: radial-gradient(ellipse at 30% 20%, #1a1a2e 0%, var(--bg) 60%);
   }
@@ -71,9 +72,25 @@
     padding: 24px;
     margin-bottom: 18px;
   }
+  .info-card api {
+    width: 100%;
+    max-width: 460px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-top: 40px;
+    margin-bottom: 18px;
+  }
   .setup-card h2, .info-card h2, .modal-sheet h2 {
     font-family: 'DM Serif Display', serif;
     font-size: 20px;
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .setup-card h3, .info-card h3, .modal-sheet h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
     font-weight: 400;
     margin-bottom: 8px;
   }
@@ -576,7 +593,6 @@
 </head>
 <body>
 <div id="setup-screen">
-
   <div class="logo">FocusTube</div>
   <div class="tagline">YouTube — Shorts Removed</div>
 
@@ -593,7 +609,7 @@
   </div>
   
   
-  <div class="info-card">
+  <div class="info-card api">
     <h3>Optional: API Key</h3>
     <p>For advanced users, you can add a YouTube Data API key for extra flexibility on public requests.</p>
     <div class="field-label">YouTube Data API v3 Key</div>
