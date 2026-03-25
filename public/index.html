@@ -10,7 +10,10 @@
 <title>FocusTube — No Shorts</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- Firebase App is always required and must be first -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<!-- Add Firebase products that you want to use -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.youtube.com/iframe_api"></script>
 <style>
   :root {
@@ -678,10 +681,55 @@ const SEARCH_HISTORY_LIMIT = 5;
 const LIKED_VIDEOS_KEY = 'ct_liked_videos_v1';
 const WATCH_PROGRESS_KEY = 'ct_watch_progress_v1';
 const LAST_WATCHED_VIDEO_KEY = 'ct_last_watched_video_v1';
-const REFRESH_TOKEN_KEY = 'ct_refresh_token_v1';
 let API_KEY = '';
 let CLIENT_ID = '';
 let ACCESS_TOKEN = '';
+// Firebase configuration - replace with your own config from Firebase Console
+const firebaseConfig = {
+  apiKey: "AIzaSyDummyKeyPleaseReplaceWithYourOwnFromFirebaseConsole",
+  authDomain: "distractionlessyt.firebaseapp.com",
+  projectId: "distractionlessyt",
+  storageBucket: "distractionlessyt.appspot.com",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:abcdef123456"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+// Listen for Firebase Auth state changes - this is what makes session persistence work!
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    // User is signed in - Firebase automatically restored the session
+    firebaseUser = user;
+    updateAuthStatus();
+    // Try to get YouTube access token and profile
+    await loadUserProfile();
+    // Only show app if we have a valid token (not just Firebase ID token)
+    if (hasValidToken() || ACCESS_TOKEN) {
+      showApp();
+      switchTab('search');
+    }
+  } else {
+    // User is signed out
+    firebaseUser = null;
+    ACCESS_TOKEN = '';
+    TOKEN_EXPIRY = 0;
+    USER_NAME = '';
+    USER_CHANNEL_ID = '';
+    updateAuthStatus();
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('setup-screen').style.display = 'flex';
+  }
+});
+
+// Google provider
+const provider = new firebase.auth.GoogleAuthProvider();
+provider.addScope('https://www.googleapis.com/auth/youtube.force-ssl');
+
+// Track current Firebase user
+let firebaseUser = null;
 let TOKEN_EXPIRY = 0;
 let USER_NAME = '';
 let USER_CHANNEL_ID = '';
@@ -699,6 +747,8 @@ const likedVideoIds = new Set();
 
 (async function init() {
   API_KEY = localStorage.getItem('ct_api_key') || '';
+  // CLIENT_ID no longer used directly with Firebase Auth
+  // Keeping the line to avoid breaking references, but it's ignored
   CLIENT_ID = localStorage.getItem('ct_client_id') || DEFAULT_CLIENT_ID;
   ACCESS_TOKEN = localStorage.getItem('ct_access_token') || '';
   TOKEN_EXPIRY = Number(localStorage.getItem('ct_token_expiry') || 0);
@@ -740,7 +790,7 @@ const likedVideoIds = new Set();
 })();
 
 function hasValidToken() {
-  return !!ACCESS_TOKEN && Date.now() < TOKEN_EXPIRY;
+  return !!firebaseUser;
 }
 
 function updateAuthStatus() {
@@ -751,7 +801,7 @@ function updateAuthStatus() {
     status.textContent = USER_NAME ? `Signed in as ${USER_NAME}` : 'Signed in';
   } else {
     dot.classList.remove('ok');
-    status.textContent = CLIENT_ID ? 'Not signed in yet' : 'Not signed in';
+    status.textContent = 'Not signed in';
   }
 }
 
@@ -762,46 +812,25 @@ function saveOptionalApiKey() {
 }
 
 function ensureTokenClient() {
-  if (!CLIENT_ID) {
-    throw new Error('Save your Google OAuth Client ID first');
-  }
-  if (!window.google || !google.accounts || !google.accounts.oauth2) {
-    throw new Error('Google sign-in library not loaded yet');
-  }
-  if (!tokenClient) {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: YT_SCOPE,
-      callback: async (resp) => {
-        if (resp.error) {
-          showToast(resp.error);
-          return;
-        }
-        ACCESS_TOKEN = resp.access_token;
-        TOKEN_EXPIRY = Date.now() + ((resp.expires_in || 3600) * 1000) - 15000;
-        localStorage.setItem('ct_access_token', ACCESS_TOKEN);
-        localStorage.setItem('ct_token_expiry', String(TOKEN_EXPIRY));
-        // Save refresh token if provided for offline access
-        if (resp.refresh_token) {
-          localStorage.setItem(REFRESH_TOKEN_KEY, resp.refresh_token);
-        }
-        await loadUserProfile();
-        updateAuthStatus();
-        showApp();
-        switchTab('search');
-        showToast('Signed in successfully');
-      }
-    });
-  }
+  // This function is no longer needed with Firebase Auth
+  // Keeping it as a no-op to avoid breaking any references
 }
 
 function signInYouTube() {
   try {
-    ensureTokenClient();
-    // Request offline access to get refresh token for persistent sessions
-    tokenClient.requestAccessToken({ access_type: 'offline', prompt: hasValidToken() ? '' : 'consent' });
-  } catch (e) {
-    showToast(e.message || 'Unable to start Google sign-in');
+    const result = await auth.signInWithPopup(provider);
+    firebaseUser = result.user;
+    // Get fresh ID token
+    await firebaseUser.getIdToken(/* forceRefresh */ true);
+    await loadUserProfile();
+    showApp();
+    switchTab('search');
+    showToast('Signed in successfully');
+  } catch (error) {
+    // Handle errors here.
+    const errorCode = error.code;
+    const errorMessage = error.message;
+    showToast(`Sign-in error: ${errorMessage}`);
   }
 }
 
