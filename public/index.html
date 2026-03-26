@@ -816,9 +816,19 @@ async function startBackendAuthFlow(options = {}) {
   localStorage.setItem(TOKEN_SERVICE_BASE_KEY, TOKEN_SERVICE_BASE);
   sessionStorage.setItem('ct_auth_in_progress', '1');
 
+  const startUrl = `${TOKEN_SERVICE_BASE}/auth/start?sessionId=${encodeURIComponent(SESSION_ID)}`;
+
+  if (options.preferRedirect) {
+    showToast('Redirecting to Google sign-in…');
+    window.location.href = startUrl;
+    return true;
+  }
+
   let res;
   try {
-    res = await fetch(`${TOKEN_SERVICE_BASE}/auth/start?sessionId=${encodeURIComponent(SESSION_ID)}`);
+    res = await fetch(`${startUrl}${startUrl.includes('?') ? '&' : '?'}format=json`, {
+      headers: { 'Accept': 'application/json' }
+    });
   } catch (e) {
     throw new Error(`Could not reach token service: ${e?.message || 'network error'}`);
   }
@@ -836,12 +846,6 @@ async function startBackendAuthFlow(options = {}) {
 
   if (!data.authUrl) {
     throw new Error('Token service did not return authUrl');
-  }
-
-  if (options.preferRedirect) {
-    showToast('Redirecting to Google sign-in…');
-    window.location.href = data.authUrl;
-    return true;
   }
 
   const popup = window.open(data.authUrl, '_blank', 'popup,width=520,height=700');

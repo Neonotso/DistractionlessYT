@@ -109,7 +109,13 @@ class Handler(BaseHTTPRequestHandler):
                 'sessionId': session_id,
                 'codeVerifier': getattr(flow, 'code_verifier', None)
             }))
-            return json_response(self, 200, {'authUrl': auth_url})
+            if self.headers.get('Accept', '').find('application/json') >= 0 or self.path.find('format=json') >= 0:
+                return json_response(self, 200, {'authUrl': auth_url})
+            self.send_response(302)
+            self.send_header('Location', auth_url)
+            add_cors_headers(self)
+            self.end_headers()
+            return
 
         if self.path.startswith('/oauth/callback'):
             qs = self.path.split('?', 1)[1] if '?' in self.path else ''
