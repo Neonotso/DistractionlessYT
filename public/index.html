@@ -790,10 +790,14 @@ function ensureCodeClient() {
   }
 }
 
+function isStandaloneIOS() {
+  return window.matchMedia?.('(display-mode: standalone)')?.matches || window.navigator.standalone === true;
+}
+
 function signInYouTube() {
   try {
     ensureCodeClient();
-    startBackendAuthFlow().then((ok) => {
+    startBackendAuthFlow({ preferRedirect: isStandaloneIOS() }).then((ok) => {
       if (!ok) showToast('Unable to start Google sign-in');
     });
   } catch (e) {
@@ -801,13 +805,19 @@ function signInYouTube() {
   }
 }
 
-async function startBackendAuthFlow() {
+async function startBackendAuthFlow(options = {}) {
   if (!TOKEN_SERVICE_BASE || !SESSION_ID) return false;
   try {
     localStorage.setItem(TOKEN_SERVICE_BASE_KEY, TOKEN_SERVICE_BASE);
+    sessionStorage.setItem('ct_auth_in_progress', '1');
     const res = await fetch(`${TOKEN_SERVICE_BASE}/auth/start?sessionId=${encodeURIComponent(SESSION_ID)}`);
     const data = await res.json();
     if (!data.authUrl) return false;
+    if (options.preferRedirect) {
+      showToast('Redirecting to Google sign-in…');
+      window.location.href = data.authUrl;
+      return true;
+    }
     const popup = window.open(data.authUrl, '_blank', 'popup,width=520,height=700');
     if (!popup) return false;
     showToast('Complete sign-in in the popup, then return here');
@@ -2009,6 +2019,28 @@ window.addEventListener('message', async (event) => {
 });
 
 window.addEventListener('focus', async () => {
+  try {
+    const pendingQuery = sessionStorage.getItem('ct_oauth_callback_query');
+    if (pendingQuery && TOKEN_SERVICE_BASE) {
+      sessionStorage.removeItem('ct_oauth_callback_query');
+      const res = await fetch(`${TOKEN_SERVICE_BASE}/oauth/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: pendingQuery.replace(/^\?/, '')
+      });
+      if (res.ok) {
+        const refreshed = await tryBackendRefreshToken().catch(() => false);
+        if (refreshed) {
+          showApp();
+          switchTab(currentTab || 'search');
+          showToast('Signed in successfully');
+          return;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Focus event finalize failed', e);
+  }
   if (!hasValidToken() && TOKEN_SERVICE_BASE) {
     const refreshed = await tryBackendRefreshToken().catch(() => false);
     if (refreshed) {

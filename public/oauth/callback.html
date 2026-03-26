@@ -17,13 +17,16 @@
     (function () {
       const status = document.getElementById('status');
       const details = document.getElementById('details');
+      try {
+        sessionStorage.setItem('ct_oauth_callback_query', window.location.search);
+      } catch (e) {}
       details.textContent = `href=${window.location.href}\nsearch=${window.location.search}\nhasOpener=${!!window.opener}`;
       if (window.opener) {
         status.textContent = 'Posting OAuth callback to opener…';
         window.opener.postMessage({ type: 'focustube-oauth-callback', query: window.location.search }, 'https://focustube.web.app');
         status.textContent = 'Posted callback to opener. If this window does not close automatically, return to the main app.';
       } else {
-        status.textContent = 'No opener window found.';
+        status.textContent = 'No opener window found. Return to FocusTube to finish sign-in.';
       }
     })();
   </script>
