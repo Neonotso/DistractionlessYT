@@ -104,7 +104,11 @@ class Handler(BaseHTTPRequestHandler):
                 prompt='consent'
             )
             print('AUTH START', {'sessionId': session_id, 'state': state, 'redirectUri': REDIRECT_URI})
-            STATE_PATH.write_text(json.dumps({'state': state, 'sessionId': session_id}))
+            STATE_PATH.write_text(json.dumps({
+                'state': state,
+                'sessionId': session_id,
+                'codeVerifier': getattr(flow, 'code_verifier', None)
+            }))
             return json_response(self, 200, {'authUrl': auth_url})
 
         if self.path.startswith('/oauth/callback'):
@@ -145,11 +149,14 @@ class Handler(BaseHTTPRequestHandler):
             saved = json.loads(STATE_PATH.read_text()) if STATE_PATH.exists() else {}
             saved_state = saved.get('state')
             session_id = saved.get('sessionId')
-            print('OAUTH FINALIZE PARSED', {'code_present': bool(code), 'state': state, 'saved_state': saved_state, 'sessionId': session_id})
+            code_verifier = saved.get('codeVerifier')
+            print('OAUTH FINALIZE PARSED', {'code_present': bool(code), 'state': state, 'saved_state': saved_state, 'sessionId': session_id, 'has_code_verifier': bool(code_verifier)})
             if not code or not state or state != saved_state:
                 return json_response(self, 400, {'error': 'Invalid OAuth finalize request'})
             flow = build_flow(state=state)
-            flow.fetch_token(code=code)
+            if code_verifier:
+                flow.code_verifier = code_verifier
+            flow.fetch_token(code=code, code_verifier=code_verifier)
             creds = flow.credentials
             save_tokens({
                 'token': creds.token,
