@@ -16,7 +16,7 @@ CLIENT_SECRET_PATH = SECRETS_DIR / 'google_oauth_client.json'
 STATE_PATH = SECRETS_DIR / 'oauth_state.json'
 HOST = os.getenv('FOCUSTUBE_TOKEN_HOST', '127.0.0.1')
 PORT = int(os.getenv('FOCUSTUBE_TOKEN_PORT', '8787'))
-REDIRECT_URI = os.getenv('FOCUSTUBE_REDIRECT_URI', 'https://focustube.web.app/oauth/callback')
+REDIRECT_URI = os.getenv('FOCUSTUBE_REDIRECT_URI', 'https://focustube.web.app/oauth/callback.html')
 ALLOWED_ORIGIN = os.getenv('FOCUSTUBE_ALLOWED_ORIGIN', 'https://focustube.web.app')
 SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl']
 
