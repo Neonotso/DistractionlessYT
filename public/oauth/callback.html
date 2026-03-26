@@ -4,15 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FocusTube OAuth Callback</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; line-height: 1.5; }
+    code { white-space: pre-wrap; word-break: break-word; display: block; margin-top: 12px; }
+  </style>
 </head>
 <body>
-  <p>Finishing FocusTube sign-in…</p>
+  <h2>Finishing FocusTube sign-in…</h2>
+  <div id="status">Callback page loaded.</div>
+  <code id="details"></code>
   <script>
     (function () {
+      const status = document.getElementById('status');
+      const details = document.getElementById('details');
+      details.textContent = `href=${window.location.href}\nsearch=${window.location.search}\nhasOpener=${!!window.opener}`;
       if (window.opener) {
+        status.textContent = 'Posting OAuth callback to opener…';
         window.opener.postMessage({ type: 'focustube-oauth-callback', query: window.location.search }, 'https://focustube.web.app');
+        status.textContent = 'Posted callback to opener. If this window does not close automatically, return to the main app.';
+      } else {
+        status.textContent = 'No opener window found.';
       }
-      document.body.innerHTML = '<p>Finishing FocusTube sign-in… You can return to the app.</p>';
     })();
   </script>
 </body>

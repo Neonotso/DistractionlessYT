@@ -1982,15 +1982,18 @@ function showSigninRequired(message) {
 }
 
 window.addEventListener('message', async (event) => {
+  console.log('FocusTube postMessage received', { origin: event.origin, data: event.data });
   if (event.origin !== 'https://focustube.web.app') return;
   if (event.data?.type !== 'focustube-oauth-callback') return;
   try {
+    showToast('OAuth callback received…');
     const res = await fetch(`${TOKEN_SERVICE_BASE}/oauth/finalize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: event.data.query.replace(/^\?/, '')
     });
     if (!res.ok) throw new Error('Could not finalize sign-in');
+    showToast('OAuth finalized…');
     const refreshed = await tryBackendRefreshToken().catch(() => false);
     if (refreshed) {
       showApp();
@@ -2000,6 +2003,7 @@ window.addEventListener('message', async (event) => {
       showToast('Sign-in completed but token refresh failed');
     }
   } catch (e) {
+    console.error('FocusTube OAuth finalize failed', e);
     showToast(e.message || 'FocusTube sign-in failed');
   }
 });

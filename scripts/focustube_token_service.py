@@ -95,6 +95,7 @@ class Handler(BaseHTTPRequestHandler):
                 include_granted_scopes='true',
                 prompt='consent'
             )
+            print('AUTH START', {'sessionId': session_id, 'state': state, 'redirectUri': REDIRECT_URI})
             STATE_PATH.write_text(json.dumps({'state': state, 'sessionId': session_id}))
             return json_response(self, 200, {'authUrl': auth_url})
 
@@ -129,12 +130,14 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/oauth/finalize':
             length = int(self.headers.get('Content-Length', '0') or '0')
             raw = self.rfile.read(length).decode('utf-8') if length else ''
+            print('OAUTH FINALIZE RAW', raw)
             qs = parse_qs(raw)
             code = qs.get('code', [None])[0]
             state = qs.get('state', [None])[0]
             saved = json.loads(STATE_PATH.read_text()) if STATE_PATH.exists() else {}
             saved_state = saved.get('state')
             session_id = saved.get('sessionId')
+            print('OAUTH FINALIZE PARSED', {'code_present': bool(code), 'state': state, 'saved_state': saved_state, 'sessionId': session_id})
             if not code or not state or state != saved_state:
                 return json_response(self, 400, {'error': 'Invalid OAuth finalize request'})
             flow = build_flow(state=state)
@@ -149,6 +152,7 @@ class Handler(BaseHTTPRequestHandler):
                 'expiry': creds.expiry.isoformat() if creds.expiry else None,
                 'session_id': session_id,
             })
+            print('OAUTH FINALIZE OK', {'sessionId': session_id, 'has_refresh_token': bool(creds.refresh_token)})
             return json_response(self, 200, {'ok': True})
 
         if self.path == '/token/refresh':
