@@ -809,15 +809,11 @@ async function startBackendAuthFlow() {
   if (!TOKEN_SERVICE_BASE || !SESSION_ID) return false;
   try {
     localStorage.setItem(TOKEN_SERVICE_BASE_KEY, TOKEN_SERVICE_BASE);
-    sessionStorage.setItem('ct_auth_in_progress', '1');
     const res = await fetch(`${TOKEN_SERVICE_BASE}/auth/start?sessionId=${encodeURIComponent(SESSION_ID)}`);
     const data = await res.json();
     if (!data.authUrl) return false;
     const popup = window.open(data.authUrl, '_blank', 'popup,width=520,height=700');
-    if (!popup) {
-      window.location.href = data.authUrl;
-      return true;
-    }
+    if (!popup) return false;
     showToast('Complete sign-in in the popup, then return here');
     return true;
   } catch {
