@@ -1,2 +1,36 @@
-.firebase/
-firebase-debug.log
+# Secrets — NEVER commit
+.secrets/
+
+# Dependencies
+node_modules/
+functions/node_modules/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build output
+dist/
+build/
+
+# Firebase debug logs
+firebase-debug.log*
+firebase-debug*-log*
+
+# Backup/other versions (don't clutter repo)
+public/other versions/
+
+# Environment files (may contain secrets)
+.env
+.env.local
+.env.*.local
+
+# OS cache
+Thumbs.db
