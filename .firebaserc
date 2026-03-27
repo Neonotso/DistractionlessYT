@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "distractionlessyt"
-  }
+  },
+  "targets": {
+    "distractionlessyt": {
+      "hosting": {
+        "focustube": [
+          "focustube"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

@@ -601,10 +601,9 @@
   
   <div class="info-card">
     <h3>Token Service</h3>
-    <p>For persistent login on your own devices, point FocusTube at your personal token service.</p>
+    <p>FocusTube is hardcoded to use your personal token service.</p>
     <div class="field-label">Token Service Base URL</div>
-    <input type="text" id="token-service-input" placeholder="http://100.x.y.z:8787 or https://your-tailnet-host" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-    <button class="btn-secondary" onclick="saveTokenServiceBase()">Save Token Service URL</button>
+    <div class="muted mono" id="token-service-display">https://ryans-m1---fresh-start.tailed49b1.ts.net/focustube-token</div>
   </div>
 
   <div class="info-card">
@@ -688,6 +687,7 @@ const WATCH_PROGRESS_KEY = 'ct_watch_progress_v1';
 const LAST_WATCHED_VIDEO_KEY = 'ct_last_watched_video_v1';
 const SESSION_ID_KEY = 'ct_session_id_v1';
 const TOKEN_SERVICE_BASE_KEY = 'ct_token_service_base';
+const FOCUSTUBE_TOKEN_SERVICE_BASE = 'https://ryans-m1---fresh-start.tailed49b1.ts.net/focustube-token';
 let API_KEY = '';
 let CLIENT_ID = '';
 let ACCESS_TOKEN = '';
@@ -706,6 +706,7 @@ let playbackSaveTimer = null;
 let ytPlayer = null;
 let ytApiReady = false;
 const savedLaterVideoIds = new Set();
+const laterPlaylistItemIds = new Map();
 const likedVideoIds = new Set();
 
 (async function init() {
@@ -716,7 +717,8 @@ const likedVideoIds = new Set();
   USER_NAME = localStorage.getItem('ct_user_name') || '';
   SESSION_ID = localStorage.getItem(SESSION_ID_KEY) || crypto.randomUUID();
   localStorage.setItem(SESSION_ID_KEY, SESSION_ID);
-  TOKEN_SERVICE_BASE = localStorage.getItem(TOKEN_SERVICE_BASE_KEY) || '';
+  TOKEN_SERVICE_BASE = FOCUSTUBE_TOKEN_SERVICE_BASE;
+  localStorage.setItem(TOKEN_SERVICE_BASE_KEY, TOKEN_SERVICE_BASE);
   USER_CHANNEL_ID = localStorage.getItem('ct_user_channel_id') || '';
   LATER_PLAYLIST = {
     id: localStorage.getItem('ct_later_playlist_id') || '',
@@ -725,8 +727,8 @@ const likedVideoIds = new Set();
   loadPersistedLikedVideos();
 
   document.getElementById('api-key-input').value = API_KEY;
-  const tsInput = document.getElementById('token-service-input');
-  if (tsInput) tsInput.value = TOKEN_SERVICE_BASE;
+  const tsDisplay = document.getElementById('token-service-display');
+  if (tsDisplay) tsDisplay.textContent = TOKEN_SERVICE_BASE;
 
   updateAuthStatus();
   if (hasValidToken()) {
@@ -770,9 +772,11 @@ function updateAuthStatus() {
 }
 
 function saveTokenServiceBase() {
-  TOKEN_SERVICE_BASE = document.getElementById('token-service-input').value.trim().replace(/\/$/, '');
+  TOKEN_SERVICE_BASE = FOCUSTUBE_TOKEN_SERVICE_BASE;
   localStorage.setItem(TOKEN_SERVICE_BASE_KEY, TOKEN_SERVICE_BASE);
-  showToast(TOKEN_SERVICE_BASE ? 'Token service URL saved' : 'Token service URL cleared');
+  const tsDisplay = document.getElementById('token-service-display');
+  if (tsDisplay) tsDisplay.textContent = TOKEN_SERVICE_BASE;
+  showToast('Token service URL is fixed for this build');
 }
 
 function saveOptionalApiKey() {
@@ -786,7 +790,7 @@ function ensureCodeClient() {
     throw new Error('Save your Google OAuth Client ID first');
   }
   if (!TOKEN_SERVICE_BASE) {
-    throw new Error('Save your token service base URL first');
+    throw new Error('Missing hardcoded token service URL');
   }
 }
 
@@ -1085,7 +1089,10 @@ async function loadWatchLater(append = false) {
         description: i.snippet.description
       }));
 
-    videos.forEach(v => savedLaterVideoIds.add(v.videoId));
+    videos.forEach(v => {
+      savedLaterVideoIds.add(v.videoId);
+      if (v.playlistItemId) laterPlaylistItemIds.set(v.videoId, v.playlistItemId);
+    });
     const filtered = await filterShorts(videos);
     if (!filtered.longform.length && !videos.length && !append) {
       document.getElementById('main-content').innerHTML = `<div class="empty"><div class="icon">🕒</div><p>No items were returned from <strong>${escHtml(sourceLabel)}</strong>.<br><br>${LATER_PLAYLIST.id ? 'If that is unexpected, double-check the playlist ID and make sure the playlist is accessible to the signed-in account.' : 'You can add a fallback playlist ID in Settings and use that as your Later queue.'}</p></div>`;
@@ -1291,7 +1298,7 @@ function renderVideosInto(videos, container, tabKey) {
           <div class="video-title">${escHtml(v.title)}</div>
           <div class="video-sub"><span>${escHtml(v.channel || '')}</span>${timeAgo ? `<span>${timeAgo}</span>` : ''}</div>
           <div class="video-actions">
-            <button class="mini-btn ${savedLaterVideoIds.has(v.videoId) ? 'saved' : ''}" ${savedLaterVideoIds.has(v.videoId) ? 'disabled' : ''} onclick="event.stopPropagation(); saveToLater('${v.videoId}', this)">${savedLaterVideoIds.has(v.videoId) ? '✓ Saved' : '＋ Later'}</button>
+            <button class="mini-btn ${savedLaterVideoIds.has(v.videoId) ? 'saved' : ''}" onclick="event.stopPropagation(); toggleLater('${v.videoId}', this)">${savedLaterVideoIds.has(v.videoId) ? '✓ Saved' : '＋ Later'}</button>
             <button class="mini-btn ${likedVideoIds.has(v.videoId) ? 'liked' : ''}" ${likedVideoIds.has(v.videoId) ? 'disabled' : ''} onclick="event.stopPropagation(); likeVideo('${v.videoId}', this)">${likedVideoIds.has(v.videoId) ? '♥ Liked' : '♥ Like'}</button>
           </div>
         </div>
@@ -1318,7 +1325,7 @@ function playVideo(v) {
   document.getElementById('playing-channel').textContent = v.channel || '';
   document.getElementById('player-header-title').textContent = v.title;
   document.getElementById('player-actions').innerHTML = `
-    <button class="mini-btn ${savedLaterVideoIds.has(v.videoId) ? 'saved' : ''}" ${savedLaterVideoIds.has(v.videoId) ? 'disabled' : ''} onclick="saveToLater('${v.videoId}', this)">${savedLaterVideoIds.has(v.videoId) ? '✓ Saved' : '＋ Later'}</button>
+    <button class="mini-btn ${savedLaterVideoIds.has(v.videoId) ? 'saved' : ''}" onclick="toggleLater('${v.videoId}', this)">${savedLaterVideoIds.has(v.videoId) ? '✓ Saved' : '＋ Later'}</button>
     <button class="mini-btn ${likedVideoIds.has(v.videoId) ? 'liked' : ''}" ${likedVideoIds.has(v.videoId) ? 'disabled' : ''} onclick="likeVideo('${v.videoId}', this)">${likedVideoIds.has(v.videoId) ? '♥ Liked' : '♥ Like'}</button>
   `;
   document.getElementById('yt-frame-wrap').innerHTML = '<div id="yt-player-frame"></div>';
@@ -1670,6 +1677,36 @@ async function likeVideo(videoId, btn) {
   }
 }
 
+async function findVideoInLaterPlaylist(videoId, playlistId) {
+  let pageToken = '';
+  let firstMatchItemId = null;
+  let matchCount = 0;
+  for (let page = 0; page < 10; page++) {
+    const url = new URL('https://www.googleapis.com/youtube/v3/playlistItems');
+    url.searchParams.set('part', 'snippet');
+    url.searchParams.set('playlistId', playlistId);
+    url.searchParams.set('maxResults', '50');
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+    const data = await apiFetch(url.toString(), { auth: true });
+    for (const item of (data.items || [])) {
+      if (item.snippet?.resourceId?.videoId === videoId) {
+        matchCount += 1;
+        if (!firstMatchItemId && item.id) firstMatchItemId = item.id;
+      }
+    }
+    pageToken = data.nextPageToken || '';
+    if (!pageToken) break;
+  }
+  return { exists: matchCount > 0, itemId: firstMatchItemId, count: matchCount };
+}
+
+async function toggleLater(videoId, btn) {
+  if (savedLaterVideoIds.has(videoId)) {
+    return removeFromLater(videoId, btn);
+  }
+  return saveToLater(videoId, btn);
+}
+
 async function saveToLater(videoId, btn) {
   if (!hasValidToken()) {
     showToast('Sign in first');
@@ -1691,6 +1728,20 @@ async function saveToLater(videoId, btn) {
   }
 
   try {
+    const existing = await findVideoInLaterPlaylist(videoId, LATER_PLAYLIST.id);
+    if (existing.exists) {
+      savedLaterVideoIds.add(videoId);
+      if (existing.itemId) laterPlaylistItemIds.set(videoId, existing.itemId);
+      clearPersistentError();
+      if (btn) {
+        btn.textContent = '✓ Saved';
+        btn.classList.add('saved');
+        btn.disabled = false;
+      }
+      showToast(existing.count > 1 ? `Already in Later (${existing.count} copies found)` : 'Already in Later');
+      return;
+    }
+
     const res = await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', {
       method: 'POST',
       headers: {
@@ -1720,12 +1771,17 @@ async function saveToLater(videoId, btn) {
       throw new Error('YouTube did not confirm the playlist save');
     }
 
-    const verified = await verifyVideoInPlaylist(videoId, LATER_PLAYLIST.id);
+    const verified = await verifyVideoInPlaylist(videoId, LATER_PLAYLIST.id, { retries: 4, delayMs: 1200 });
     if (!verified) {
-      throw new Error(`Save not confirmed in playlist ${LATER_PLAYLIST.name || LATER_PLAYLIST.id}`);
+      console.warn('Playlist insert succeeded but immediate verification did not confirm yet', {
+        videoId,
+        playlistId: LATER_PLAYLIST.id,
+        insertedPlaylistItemId: body?.id || null
+      });
     }
 
     savedLaterVideoIds.add(videoId);
+    if (body?.id) laterPlaylistItemIds.set(videoId, body.id);
     clearPersistentError();
     const successDetails = `channel=${USER_NAME || '(unknown)'}\nchannelId=${USER_CHANNEL_ID || '(unknown)'}\nplaylist=${LATER_PLAYLIST.name || '(unknown)'}\nplaylistId=${LATER_PLAYLIST.id}\nvideoId=${videoId}\ninsertedPlaylistItemId=${body?.id || '(missing)'}\nverified=true`;
     const playlistUrl = `https://www.youtube.com/playlist?list=${encodeURIComponent(LATER_PLAYLIST.id)}`;
@@ -1741,7 +1797,7 @@ async function saveToLater(videoId, btn) {
     if (btn) {
       btn.textContent = '✓ Saved';
       btn.classList.add('saved');
-      btn.disabled = true;
+      btn.disabled = false;
     }
     showToast(`Saved to Later: ${LATER_PLAYLIST.name || LATER_PLAYLIST.id} (${LATER_PLAYLIST.id})`);
     if (currentTab === 'watchlater') {
@@ -1754,11 +1810,12 @@ async function saveToLater(videoId, btn) {
 
     if (/duplicate|already exists|videoAlreadyInPlaylist/i.test(msg)) {
       savedLaterVideoIds.add(videoId);
+    if (body?.id) laterPlaylistItemIds.set(videoId, body.id);
       clearPersistentError();
       if (btn) {
         btn.textContent = '✓ Saved';
         btn.classList.add('saved');
-        btn.disabled = true;
+        btn.disabled = false;
       }
       showToast('Already in Later');
       return;
@@ -1780,14 +1837,102 @@ async function saveToLater(videoId, btn) {
   }
 }
 
-async function verifyVideoInPlaylist(videoId, playlistId) {
-  try {
-    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${encodeURIComponent(playlistId)}&maxResults=25`;
-    const data = await apiFetch(url, { auth: true });
-    return (data.items || []).some(item => item.snippet?.resourceId?.videoId === videoId);
-  } catch {
-    return false;
+async function removeFromLater(videoId, btn) {
+  if (!hasValidToken()) {
+    showToast('Sign in first');
+    return;
   }
+  if (!LATER_PLAYLIST.id) {
+    showToast('Pick a Later playlist in Settings first');
+    return;
+  }
+
+  const originalText = btn?.textContent;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Removing…';
+  }
+
+  try {
+    let itemIds = [];
+    const known = laterPlaylistItemIds.get(videoId);
+    if (known) itemIds.push(known);
+
+    if (!itemIds.length) {
+      const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${encodeURIComponent(LATER_PLAYLIST.id)}&maxResults=50`;
+      const data = await apiFetch(url, { auth: true });
+      itemIds = (data.items || [])
+        .filter(item => item.snippet?.resourceId?.videoId === videoId)
+        .map(item => item.id)
+        .filter(Boolean);
+    }
+
+    if (!itemIds.length) {
+      savedLaterVideoIds.delete(videoId);
+      laterPlaylistItemIds.delete(videoId);
+      if (btn) {
+        btn.textContent = '＋ Later';
+        btn.classList.remove('saved');
+        btn.disabled = false;
+      }
+      showToast('Video was not in Later');
+      return;
+    }
+
+    for (const itemId of itemIds) {
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?id=${encodeURIComponent(itemId)}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`
+        }
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const apiMessage = body?.error?.message || `HTTP ${res.status}`;
+        throw new Error(apiMessage);
+      }
+    }
+
+    savedLaterVideoIds.delete(videoId);
+    laterPlaylistItemIds.delete(videoId);
+    clearPersistentError();
+    if (btn) {
+      btn.textContent = '＋ Later';
+      btn.classList.remove('saved');
+      btn.disabled = false;
+    }
+    showToast(`Removed from Later: ${LATER_PLAYLIST.name || LATER_PLAYLIST.id}`);
+    if (currentTab === 'watchlater') {
+      nextPageTokens.watchlater = '';
+      loadWatchLater(false);
+    }
+  } catch (e) {
+    const msg = e.message || 'Unknown error';
+    showToast(`Could not remove: ${msg}`);
+    if (btn) {
+      btn.textContent = originalText || '✓ Saved';
+      btn.classList.add('saved');
+      btn.disabled = false;
+    }
+  }
+}
+
+async function verifyVideoInPlaylist(videoId, playlistId, options = {}) {
+  const retries = options.retries ?? 3;
+  const delayMs = options.delayMs ?? 800;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${encodeURIComponent(playlistId)}&maxResults=50`;
+      const data = await apiFetch(url, { auth: true });
+      const found = (data.items || []).some(item => item.snippet?.resourceId?.videoId === videoId);
+      if (found) return true;
+    } catch {
+    }
+    if (attempt < retries) {
+      await sleep(delayMs * (attempt + 1));
+    }
+  }
+  return false;
 }
 
 async function verifySelectedPlaylist(playlist) {
@@ -2077,6 +2222,10 @@ function showPersistentSuccess(msg, details = '', links = []) {
   box.innerHTML = `<strong>Save debug</strong><br>${escHtml(msg)}${details ? `<br><br><code style="white-space:pre-wrap;word-break:break-word;display:block">${escHtml(details)}</code>` : ''}${linksHtml}`;
   main.prepend(box);
 }
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function clearPersistentError() {
   document.getElementById('persistent-error')?.remove();
 }
