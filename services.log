@@ -1,0 +1,104 @@
+Starting redirector on port 443 -> port 80
+Traceback (most recent call last):
+  File "/Users/ryantaylorvegh/.openclaw/workspace-sally/FocusTube/scripts/forward_to_port80.py", line 32, in <module>
+    server = HTTPServer(('0.0.0.0', PORT), RedirectHandler)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/socketserver.py", line 457, in __init__
+    self.server_bind()
+    ~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/http/server.py", line 148, in server_bind
+    socketserver.TCPServer.server_bind(self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 48] Address already in use
+127.0.0.1 - - [15/Apr/2026 16:54:02] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 16:54:02] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:54:06] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:54:06] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:54:08] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 16:54:08] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:54:10] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 16:54:31] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 16:54:31] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:54:40] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 16:54:40] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:54:40] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:56:48] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 16:56:48] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:56:48] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:56:52] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:56:54] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 16:56:54] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:56:54] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:57:01] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 16:57:01] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:57:08] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 16:57:08] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:57:09] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 16:57:09] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 17:16:37] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 17:18:40] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 17:19:23] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 17:19:23] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 17:19:25] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 17:19:25] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 17:19:26] "POST /token/refresh HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 17:19:27] "OPTIONS /token/revoke HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 17:19:27] "POST /token/revoke HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 17:19:31] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 17:22:35] "GET /oauth/callback HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 17:22:36] "POST /oauth/finalize HTTP/1.1" 400 -
+127.0.0.1 - - [15/Apr/2026 17:35:01] "GET /oauth/callback HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 17:35:03] "POST /oauth/finalize HTTP/1.1" 400 -
+127.0.0.1 - - [15/Apr/2026 17:35:04] "GET /oauth/callback HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 17:35:04] "POST /oauth/finalize HTTP/1.1" 400 -
+127.0.0.1 - - [15/Apr/2026 17:35:18] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 17:35:22] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 17:35:23] "GET /auth/start?sessionId=1f5f09ac-2d5c-41ad-a06c-95f1fc149fbd HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 17:44:34] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 17:44:34] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 17:44:35] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 17:52:02] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 17:52:02] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 17:52:04] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 21:33:40] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 21:33:41] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 21:33:43] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 21:35:22] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 21:35:22] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 21:48:46] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 22:12:51] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 22:12:51] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 22:12:53] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 22:26:35] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 22:26:35] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 22:26:35] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 22:26:36] "GET /auth/start?sessionId=4e25ed1f-4644-4bc9-bda9-3f461132b84c HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 22:54:34] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 22:54:34] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 22:54:34] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 22:54:34] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 22:54:36] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 22:54:37] "GET /auth/start?sessionId=0851f315-337b-4a89-86f7-7200553fe19c HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 23:09:17] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 23:12:06] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 23:12:06] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 23:12:06] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 23:12:07] "GET /auth/start?sessionId=4e25ed1f-4644-4bc9-bda9-3f461132b84c HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 23:12:21] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [15/Apr/2026 23:12:21] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [15/Apr/2026 23:12:22] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+127.0.0.1 - - [15/Apr/2026 23:58:20] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 23:58:20] "GET /auth/start?sessionId=test&format=json HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 01:00:47] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 01:00:47] "GET /auth/start?sessionId=test&format=json HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 01:01:11] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 01:01:11] "GET /auth/start?sessionId=test&format=json HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 01:01:34] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 01:01:34] "GET /auth/start?sessionId=test&format=json HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 04:00:03] "OPTIONS /token/refresh HTTP/1.1" 204 -
+127.0.0.1 - - [16/Apr/2026 04:00:03] "POST /token/refresh HTTP/1.1" 401 -
+127.0.0.1 - - [16/Apr/2026 04:00:04] "GET /auth/start?sessionId=32357bb3-1455-4936-8eac-850d36d710cc HTTP/1.1" 302 -
+.openclaw/workspace-sally/FocusTube/scripts/start_focustube_services.sh: line 24: 12264 Terminated: 15          python scripts/focustube_token_service.py
+.openclaw/workspace-sally/FocusTube/scripts/start_focustube_services.sh: line 24: 12268 Terminated: 15          python scripts/focustube_reverse_proxy.py

@@ -1094,6 +1094,10 @@ async function loadWatchLater(append = false) {
       if (v.playlistItemId) laterPlaylistItemIds.set(v.videoId, v.playlistItemId);
     });
     const filtered = await filterShorts(videos);
+    // Reverse the list so most recently added items appear first
+    if (!append) {
+      filtered.longform.reverse();
+    }
     if (!filtered.longform.length && !videos.length && !append) {
       document.getElementById('main-content').innerHTML = `<div class="empty"><div class="icon">🕒</div><p>No items were returned from <strong>${escHtml(sourceLabel)}</strong>.<br><br>${LATER_PLAYLIST.id ? 'If that is unexpected, double-check the playlist ID and make sure the playlist is accessible to the signed-in account.' : 'You can add a fallback playlist ID in Settings and use that as your Later queue.'}</p></div>`;
       return;
@@ -1751,7 +1755,7 @@ async function saveToLater(videoId, btn) {
       body: JSON.stringify({
         snippet: {
           playlistId: LATER_PLAYLIST.id,
-          position: 0,
+          position: null,
           resourceId: {
             kind: 'youtube#video',
             videoId
